@@ -1,0 +1,139 @@
+Category,Phrase,RiskScore
+Schedule & Workload,Another late night at the office,1
+Schedule & Workload,Just got off a 12-hour shift,3
+Schedule & Workload,Can’t keep up with the deadlines,1
+Schedule & Workload,Back-to-back meetings again,5
+Schedule & Workload,No time to breathe lately,2
+Schedule & Workload,Overloaded with work,2
+Schedule & Workload,Drowning in tasks,5
+Schedule & Workload,So much for lunch breaks,1
+Schedule & Workload,Weekend plans = working again,3
+Schedule & Workload,Work never ends,2
+Schedule & Workload,Feeling exhausted from work,4
+Schedule & Workload,Too much on my plate,4
+Schedule & Workload,I need a break from this chaos,3
+Schedule & Workload,Just pulled another all-nighter,4
+Schedule & Workload,Why do I have 3 jobs in 1?,2
+Schedule & Workload,Burnout is real,4
+Schedule & Workload,This workload is insane,3
+Schedule & Workload,Not enough hours in the day,3
+Schedule & Workload,Endless Zoom calls,4
+Schedule & Workload,I’m not a robot,3
+Schedule & Workload,Overtime with no extra pay,2
+Schedule & Workload,This isn’t sustainable,1
+Schedule & Workload,No downtime anymore,1
+Schedule & Workload,Feeling overwhelmed at work,5
+Schedule & Workload,Need better task management,2
+Schedule & Workload,Too much micromanagement,4
+Schedule & Workload,Unrealistic expectations,2
+Money & Compensation,Still waiting on that raise,4
+Money & Compensation,They underpay us here,2
+Money & Compensation,Not worth the paycheck,3
+Money & Compensation,Thinking about freelancing,4
+Money & Compensation,Gotta start a side hustle,2
+Money & Compensation,This job doesn’t pay the bills,5
+Money & Compensation,Can’t survive on this salary,4
+Money & Compensation,No bonuses this year,4
+Money & Compensation,They say ‘budget cuts’ again,1
+Money & Compensation,Rent is more than my paycheck,5
+Money & Compensation,How do people live off this?,3
+Money & Compensation,Financial stress is real,3
+Money & Compensation,Time to look for a higher paying job,1
+Money & Compensation,Tired of living paycheck to paycheck,1
+Money & Compensation,"They expect more, pay less",1
+Money & Compensation,No cost of living adjustment,3
+Money & Compensation,Tired of being undervalued,4
+Money & Compensation,Can’t afford to stay here,4
+Money & Compensation,Benefits cut again,3
+Money & Compensation,"No merit increase, again",2
+Money & Compensation,They said raises are frozen,4
+Money & Compensation,Where’s the appreciation?,1
+Money & Compensation,My side gig makes more,2
+Money & Compensation,Gotta pick up weekend work,5
+Money & Compensation,Not feeling compensated fairly,2
+Money & Compensation,"New job, better pay?",2
+Money & Compensation,This raise is a joke,5
+Money & Compensation,Why am I still here?,1
+Job Satisfaction,Hate Mondays,2
+Job Satisfaction,Just here for the check,1
+Job Satisfaction,Love what I do,5
+Job Satisfaction,Feeling stuck in my role,1
+Job Satisfaction,Another pointless meeting,5
+Job Satisfaction,This place is toxic,1
+Job Satisfaction,No motivation to log in,4
+Job Satisfaction,Micromanaged to death,1
+Job Satisfaction,My manager doesn’t listen,3
+Job Satisfaction,No growth opportunities,1
+Job Satisfaction,Nothing changes around here,5
+Job Satisfaction,Why do I even try?,5
+Job Satisfaction,Burnout setting in,1
+Job Satisfaction,Thinking about quitting,4
+Job Satisfaction,I dread going in tomorrow,4
+Job Satisfaction,Feels like Groundhog Day,1
+Job Satisfaction,I’m just a cog in the machine,3
+Job Satisfaction,This isn’t fulfilling anymore,3
+Job Satisfaction,Wasting my potential,4
+Job Satisfaction,They don’t value employees,1
+Job Satisfaction,Where’s the innovation?,4
+Job Satisfaction,Wish I felt challenged,5
+Job Satisfaction,Lost my drive lately,5
+Job Satisfaction,Stuck in a dead-end job,4
+Job Satisfaction,Looking for purpose,3
+Job Satisfaction,This culture is depressing,2
+Job Satisfaction,Lack of transparency,2
+Job Satisfaction,Not sure I belong here,5
+Family & Work-Life Balance,Missed another family dinner,4
+Family & Work-Life Balance,Work took over my weekend,4
+Family & Work-Life Balance,Wish I had more time with my kids,1
+Family & Work-Life Balance,No such thing as work-life balance,2
+Family & Work-Life Balance,Can’t take a break without guilt,1
+Family & Work-Life Balance,"Always working, never living",5
+Family & Work-Life Balance,Kids grow up so fast… and I’m not there,2
+Family & Work-Life Balance,Need more family time,2
+Family & Work-Life Balance,"Work comes before everything, apparently",4
+Family & Work-Life Balance,Skipped vacation again,1
+Family & Work-Life Balance,Wish I had flexibility,1
+Family & Work-Life Balance,Guilt-tripped for taking PTO,3
+Family & Work-Life Balance,Remote work saved my sanity,3
+Family & Work-Life Balance,Thankful for my flexible schedule,1
+Family & Work-Life Balance,Tired of missing milestones,1
+Family & Work-Life Balance,My job is my life right now,2
+Family & Work-Life Balance,They expect us to be always on,3
+Family & Work-Life Balance,Just need a day off,4
+Family & Work-Life Balance,Balance? What’s that?,5
+Family & Work-Life Balance,"Sick kid, still had to work",2
+Family & Work-Life Balance,No support for parents here,2
+Family & Work-Life Balance,Wish I could clock out mentally,5
+Family & Work-Life Balance,Need a life outside of work,1
+Family & Work-Life Balance,Can’t be a parent and an employee,3
+Family & Work-Life Balance,They don’t understand real life,2
+Family & Work-Life Balance,Overworked and overstressed,4
+Family & Work-Life Balance,Home feels like a second office,3
+Communication & Leadership,No one communicates here,1
+Communication & Leadership,I found out from Slack… again,2
+Communication & Leadership,Leadership is out of touch,3
+Communication & Leadership,"No direction, just vibes",2
+Communication & Leadership,Wish we had better meetings,2
+Communication & Leadership,"No feedback, just criticism",1
+Communication & Leadership,Our manager is MIA,2
+Communication & Leadership,Tired of vague goals,3
+Communication & Leadership,No one knows what’s going on,2
+Communication & Leadership,Mixed messages from the top,4
+Communication & Leadership,We need better communication,2
+Communication & Leadership,No team alignment,5
+Communication & Leadership,Always in the dark,1
+Communication & Leadership,Nobody listens here,5
+Communication & Leadership,Everything is last-minute,1
+Communication & Leadership,Leadership needs leadership,4
+Communication & Leadership,Talked over again in the meeting,3
+Communication & Leadership,We just wing it here,3
+Communication & Leadership,No follow-up after meetings,5
+Communication & Leadership,I don’t feel heard,3
+Communication & Leadership,They never ask for input,3
+Communication & Leadership,Too much red tape,1
+Communication & Leadership,Communication is one-way,1
+Communication & Leadership,Poor onboarding experience,2
+Communication & Leadership,Tired of being left out,3
+Communication & Leadership,We need transparency,4
+Communication & Leadership,Can’t get a straight answer,1
+Communication & Leadership,Too many silos,5

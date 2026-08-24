@@ -1,1 +1,4 @@
 .env
+envbackup
+.env
+.env.*

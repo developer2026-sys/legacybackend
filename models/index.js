@@ -6,12 +6,14 @@ const defineAdmin = require('./adminmodel');
 const defineTeamMember = require('./teammember');
 const definePartnerTeamMember = require('./partnerteammember');
 const definePartnershipSettings = require('./partnershipSettings');
+const defineMonumentSetting = require('./monumentsetting');
 
 const { Partner, MemorialRequest, RequestPhoto } = defineModels(sequelize);
 const { Admin } = defineAdmin(sequelize);
 const { TeamMember } = defineTeamMember(sequelize);
 const { PartnerTeamMember } = definePartnerTeamMember(sequelize);
 const { PartnershipSettings } = definePartnershipSettings(sequelize);
+const { MonumentSettingRequest, MonumentSettingDocument } = defineMonumentSetting(sequelize);
 
 // TeamMember associations
 TeamMember.belongsTo(Admin, {
@@ -51,6 +53,22 @@ PartnershipSettings.belongsTo(Partner, {
   as: 'partner',
 });
 
+// MonumentSettingRequest associations
+Partner.hasMany(MonumentSettingRequest, {
+  foreignKey: 'partnerId',
+  as: 'monumentSettingRequests',
+});
+
+MonumentSettingRequest.belongsTo(Partner, {
+  foreignKey: 'partnerId',
+  as: 'partner',
+});
+
+MonumentSettingRequest.belongsTo(MemorialRequest, {
+  foreignKey: 'linkedMemorialRequestId',
+  as: 'linkedMemorialRequest',
+});
+
 module.exports = {
   Admin,
   Partner,
@@ -59,4 +77,6 @@ module.exports = {
   TeamMember,
   PartnerTeamMember,
   PartnershipSettings,
+  MonumentSettingRequest,
+  MonumentSettingDocument,
 };

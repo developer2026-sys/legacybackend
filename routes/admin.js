@@ -4,11 +4,13 @@ const { Router } = require('express');
 const adminAuth = require('../middleware/admin');
 const partnershipSettingsController = require('../controller/partnershipSettingsController');
 const { MemorialRequest, RequestPhoto,Partner, Admin } = require('../models');
+const { uploadMonumentDocs } = require('../controller/monumentSetting');
 module.exports = (models) => {
   const { getSettings, updateSettings } = partnershipSettingsController(models);
 
   const router = Router();
   const controller = require('../controller/admin')(models); // ← pass models here
+  const monumentAdminController = require('../controller/monumentSettingAdmin')(models);
 
  
   // Public
@@ -65,6 +67,24 @@ router.patch('/requests/:id/price',controller.updateRequestPrice)
   
   router.get('/partners/:id/settings', getSettings);
   router.patch('/partners/:id/settings', updateSettings);
+
+  // Monument Setting
+  router.get  ('/monument-setting',     monumentAdminController.getAllMonumentSettingRequests);
+  router.get  ('/monument-setting/:id', monumentAdminController.getMonumentSettingRequest);
+  router.patch('/monument-setting/:id', monumentAdminController.updateMonumentSettingRequest);
+  router.post(
+    '/monument-setting/:id/documents',
+    (req, res, next) => {
+      uploadMonumentDocs(req, res, (err) => {
+        if (!err) return next();
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({ message: 'Each file must be 10 MB or smaller.' });
+        }
+        return res.status(400).json({ message: err.message });
+      });
+    },
+    monumentAdminController.uploadMonumentSettingDocuments,
+  );
 
   return router;
 };

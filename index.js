@@ -28,7 +28,9 @@ const authRoutes    = require('./routes/auth');
 const requestRoutes = require('./routes/request');
 const adminRoutes   = require('./routes/admin');
 const billingRoutes = require('./routes/billing');
+const monumentSettingRoutes = require('./routes/monumentSetting');
 
+app.use('/api', monumentSettingRoutes);
 app.use('/api', authRoutes);
 app.use('/api', requestRoutes);
 app.use('/api', billingRoutes);

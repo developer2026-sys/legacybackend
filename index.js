@@ -36,6 +36,6 @@ app.use('/api', requestRoutes);
 app.use('/api', billingRoutes);
 app.use('/api/admin', adminRoutes(models));
 
-// Test route to manually trigger reminder
+
 
 app.listen(5000, () => console.log('Listening on port 5000'));

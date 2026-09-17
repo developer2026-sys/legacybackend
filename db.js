@@ -1,6 +1,7 @@
 // db.js
 require('dotenv').config();
 const { Sequelize } = require('sequelize');
+require('mysql2'); // force bundler to include this dependency
 
 const sequelize = new Sequelize(process.env.DATABASE_URL, {
   dialect: 'mysql',

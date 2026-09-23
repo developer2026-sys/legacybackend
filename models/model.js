@@ -75,9 +75,41 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING,
       allowNull: false,
     },
+    nameOnMemorial: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    memorialSize: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    memorialType: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     memorialLocation: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    cemeteryName: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    section: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    lot: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    space: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    vaseInfo: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     notes: {
       type: DataTypes.TEXT,

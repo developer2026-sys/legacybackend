@@ -84,7 +84,15 @@ const createRequest = async (req, res) => {
       customerName,
       customerPhone,
       customerEmail,
+      nameOnMemorial,
+      memorialSize,
+      memorialType,
       memorialLocation,
+      cemeteryName,
+      section,
+      lot,
+      space,
+      vaseInfo,
       notes,
     } = req.body;
  
@@ -133,7 +141,15 @@ const createRequest = async (req, res) => {
       customerName,
       customerPhone,
       customerEmail,
+      nameOnMemorial: nameOnMemorial || null,
+      memorialSize: memorialSize || null,
+      memorialType: memorialType || null,
       memorialLocation,
+      cemeteryName: cemeteryName || null,
+      section: section || null,
+      lot: lot || null,
+      space: space || null,
+      vaseInfo: vaseInfo || null,
       notes: notes || null,
     });
  

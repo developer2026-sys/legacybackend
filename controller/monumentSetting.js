@@ -19,12 +19,13 @@ const getRequestScope = (req) => ({
     : {}),
 });
 
-const UPLOAD_DIR = path.join(__dirname, '..', 'uploads', 'monument-setting');
-fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+const UPLOAD_DIR = path.join('/tmp/public/files');
 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, 'uploads/monument-setting/'),
-  destination: (req, file, cb) => cb(null, UPLOAD_DIR),
+  destination: (req, file, cb) => {
+    fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+    cb(null, UPLOAD_DIR);
+  },
   filename: (req, file, cb) => {
     const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
     cb(null, `${unique}${path.extname(file.originalname)}`);

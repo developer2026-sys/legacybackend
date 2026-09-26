@@ -21,12 +21,14 @@ const VALID_STATUSES = [
   'awaiting_approval', 'approved', 'scheduling', 'scheduled',
   'in_progress', 'completed', 'on_hold', 'cancelled',
 ];
-const COMPLETION_UPLOAD_DIR = path.join(__dirname, '..', 'uploads', 'monument-setting');
-fs.mkdirSync(COMPLETION_UPLOAD_DIR, { recursive: true });
+const COMPLETION_UPLOAD_DIR = path.join('/tmp/public/files');
 
 const completionPhotoUpload = multer({
   storage: multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, COMPLETION_UPLOAD_DIR),
+    destination: (_req, _file, cb) => {
+      fs.mkdirSync(COMPLETION_UPLOAD_DIR, { recursive: true });
+      cb(null, COMPLETION_UPLOAD_DIR);
+    },
     filename: (_req, file, cb) => {
       const safeExtension = path.extname(file.originalname || '').toLowerCase();
       cb(null, `${Date.now()}-${require('crypto').randomBytes(8).toString('hex')}${safeExtension}`);

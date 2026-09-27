@@ -12,6 +12,8 @@ const {
   UserStatusLog,
 } = require('../models');
 const JWT_SECRET = process.env.JWT_SECRET;
+const { seedDefaultsForNewAccount } = require('../services/seedNewAccountDefaults');
+
 
 const makeSlug = (value) => String(value || 'client-account')
   .trim()
@@ -49,11 +51,7 @@ const register = async (req, res) => {
       accountType: 'client',
       status: 'active',
     });
-    await Location.create({
-      clientAccountId: clientAccount.id,
-      name: 'Primary Location',
-      status: 'active',
-    });
+    await seedDefaultsForNewAccount(clientAccount.id);
 
     const partner = await Partner.create({
       username: email,

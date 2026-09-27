@@ -382,8 +382,24 @@ const sendApInvoiceEmail = async ({
   invoiceId,
   requestNumber,
   customerName,
+  customerEmail,
+  customerPhone,
   propertyName,
+  memorialLocation,
+  advisorName,
   amount,
+  status,
+  createdAt,
+  dueDate,
+  paidAt,
+  paymentMethod,
+  notes,
+  lineItems = [],
+  packageName,
+  restorationTotal,
+  revenueShareTotal,
+  beforePhotoUrl,
+  afterPhotoUrl,
 }) => {
   const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
     '&': '&amp;',
@@ -392,34 +408,166 @@ const sendApInvoiceEmail = async ({
     '"': '&quot;',
     "'": '&#39;',
   }[char]));
+  const money = (value) => `$${Number(value || 0).toFixed(2)}`;
+  const formatDate = (value) => (value
+    ? new Date(value).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })
+    : '—');
+
   const invoiceNumber = `INV-${invoiceId}`;
-  const invoiceAmount = `$${Number(amount || 0).toFixed(2)}`;
-  const details = [
+  const invoiceAmount = money(amount);
+  const statusLabel = String(status || 'pending').toLowerCase();
+
+  const lineItemRows = lineItems.length
+    ? lineItems.map((item) => `
+      <tr>
+        <td style="padding:10px;border-bottom:1px solid #e0e0e0;">${escapeHtml(item.description || item.name || '—')}</td>
+        <td style="padding:10px;border-bottom:1px solid #e0e0e0;text-align:center;">${escapeHtml(item.quantity ?? 1)}</td>
+        <td style="padding:10px;border-bottom:1px solid #e0e0e0;text-align:right;">${money(item.unitPrice)}</td>
+        <td style="padding:10px;border-bottom:1px solid #e0e0e0;text-align:right;font-weight:700;color:#1e3c72;">${money(item.total ?? (item.quantity || 1) * (item.unitPrice || 0))}</td>
+      </tr>
+    `).join('')
+    : '';
+
+  const photosSection = (beforePhotoUrl || afterPhotoUrl) ? `
+    <div class="section">
+      <div class="section-title">Before &amp; After</div>
+      <div style="display:flex;gap:15px;flex-wrap:wrap;">
+        ${beforePhotoUrl ? `<div style="flex:1;min-width:220px;"><div style="font-size:12px;color:#666;margin-bottom:6px;">Before</div><img src="${beforePhotoUrl}" alt="Before" style="width:100%;border-radius:4px;border:1px solid #e0e0e0;" /></div>` : ''}
+        ${afterPhotoUrl ? `<div style="flex:1;min-width:220px;"><div style="font-size:12px;color:#666;margin-bottom:6px;">After</div><img src="${afterPhotoUrl}" alt="After" style="width:100%;border-radius:4px;border:1px solid #e0e0e0;" /></div>` : ''}
+      </div>
+    </div>
+  ` : '';
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f5f5; margin: 0; padding: 20px; }
+        .container { max-width: 640px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .header { background: #ffffff; color: #1e3c72; padding: 30px 20px; text-align: center; border-bottom: 1px solid #e0e0e0; }
+        .header h1 { margin: 0 0 10px 0; font-size: 22px; font-weight: 600; }
+        .header p { margin: 5px 0; font-size: 14px; color: #666; }
+        .content { padding: 30px 20px; }
+        .section { margin-bottom: 25px; }
+        .section-title { font-size: 14px; font-weight: 600; color: #1e3c72; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background-color: #f9f9f9; border: 1px solid #e0e0e0; border-radius: 4px; padding: 15px; }
+        .info-item { font-size: 13px; }
+        .info-label { color: #666; display: block; margin-bottom: 2px; }
+        .info-value { color: #1e3c72; font-weight: 600; }
+        table.line-items { width: 100%; border-collapse: collapse; font-size: 13px; }
+        table.line-items th { text-align: left; padding: 8px 10px; background-color: #f0f0f0; color: #666; font-size: 12px; text-transform: uppercase; }
+        .status-pill { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; text-transform: capitalize; background-color: #fef3c7; color: #92400e; }
+        .status-pill.paid { background-color: #dcfce7; color: #166534; }
+        .total-card { background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: white; padding: 22px; border-radius: 4px; text-align: center; margin-top: 10px; }
+        .total-label { font-size: 13px; opacity: 0.9; margin-bottom: 6px; }
+        .total-value { font-size: 32px; font-weight: 700; }
+        .notes-card { background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 12px 15px; border-radius: 4px; font-size: 13px; color: #78350f; }
+        .footer { background-color: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #e0e0e0; }
+        .footer p { margin: 5px 0; font-size: 12px; color: #666; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <img src="https://res.cloudinary.com/dbjwbveqn/image/upload/v1782322278/ea262c67-909f-4213-ac77-e17bff68b659_l7nx6o.jpg" alt="Lasting Legacy Cleaners" style="height: 70px; width: auto; margin-bottom: 12px; display: block; margin-left: auto; margin-right: auto;" />
+          <h1>Accounts Payable — Invoice ${escapeHtml(invoiceNumber)}</h1>
+          <p>Request ${escapeHtml(requestNumber)} &middot; <span class="status-pill ${statusLabel === 'paid' ? 'paid' : ''}">${escapeHtml(statusLabel)}</span></p>
+        </div>
+        <div class="content">
+
+          <div class="section">
+            <div class="section-title">Request Details</div>
+            <div class="info-grid">
+              <div class="info-item"><span class="info-label">Customer</span><span class="info-value">${escapeHtml(customerName || '—')}</span></div>
+              <div class="info-item"><span class="info-label">Property / Cemetery</span><span class="info-value">${escapeHtml(propertyName || '—')}</span></div>
+              <div class="info-item"><span class="info-label">Customer Email</span><span class="info-value">${escapeHtml(customerEmail || '—')}</span></div>
+              <div class="info-item"><span class="info-label">Customer Phone</span><span class="info-value">${escapeHtml(customerPhone || '—')}</span></div>
+              <div class="info-item"><span class="info-label">Memorial Location</span><span class="info-value">${escapeHtml(memorialLocation || '—')}</span></div>
+              <div class="info-item"><span class="info-label">Advisor</span><span class="info-value">${escapeHtml(advisorName || '—')}</span></div>
+              <div class="info-item"><span class="info-label">Package</span><span class="info-value">${escapeHtml(packageName || '—')}</span></div>
+              <div class="info-item"><span class="info-label">Created</span><span class="info-value">${escapeHtml(formatDate(createdAt))}</span></div>
+              <div class="info-item"><span class="info-label">Due Date</span><span class="info-value">${escapeHtml(dueDate ? formatDate(dueDate) : '—')}</span></div>
+              <div class="info-item"><span class="info-label">Paid At</span><span class="info-value">${escapeHtml(paidAt ? formatDate(paidAt) : '—')}</span></div>
+              <div class="info-item"><span class="info-label">Payment Method</span><span class="info-value">${escapeHtml(paymentMethod || '—')}</span></div>
+            </div>
+          </div>
+
+          ${lineItemRows ? `
+          <div class="section">
+            <div class="section-title">Line Items</div>
+            <table class="line-items">
+              <thead>
+                <tr><th>Description</th><th style="text-align:center;">Qty</th><th style="text-align:right;">Unit Price</th><th style="text-align:right;">Total</th></tr>
+              </thead>
+              <tbody>
+                ${lineItemRows}
+              </tbody>
+            </table>
+          </div>
+          ` : ''}
+
+          ${(restorationTotal || revenueShareTotal) ? `
+          <div class="section">
+            <div class="section-title">Revenue Breakdown</div>
+            <div class="info-grid">
+              <div class="info-item"><span class="info-label">Restoration Total</span><span class="info-value">${money(restorationTotal)}</span></div>
+              <div class="info-item"><span class="info-label">Revenue Share Total</span><span class="info-value">${money(revenueShareTotal)}</span></div>
+            </div>
+          </div>
+          ` : ''}
+
+          ${photosSection}
+
+          ${notes ? `
+          <div class="section">
+            <div class="section-title">Notes</div>
+            <div class="notes-card">${escapeHtml(notes)}</div>
+          </div>
+          ` : ''}
+
+          <div class="total-card">
+            <div class="total-label">Amount Due</div>
+            <div class="total-value">${invoiceAmount}</div>
+          </div>
+
+        </div>
+        <div class="footer">
+          <p>Lasting Legacy Cleaners &middot; Accounts Payable Notification</p>
+          <p>12175 Visionary Way, Fishers, IN 46038 &middot; 317.970.3904</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const text = [
     `Invoice: ${invoiceNumber}`,
     `Request: ${requestNumber}`,
-    `Customer: ${customerName || '—'}`,
+    `Status: ${statusLabel}`,
+    `Customer: ${customerName || '—'} (${customerEmail || '—'}, ${customerPhone || '—'})`,
     `Property: ${propertyName || '—'}`,
+    `Memorial Location: ${memorialLocation || '—'}`,
+    `Advisor: ${advisorName || '—'}`,
+    `Package: ${packageName || '—'}`,
+    `Created: ${formatDate(createdAt)}`,
+    dueDate ? `Due: ${formatDate(dueDate)}` : null,
+    paidAt ? `Paid: ${formatDate(paidAt)}` : null,
+    paymentMethod ? `Payment Method: ${paymentMethod}` : null,
+    lineItems.length ? `Line items: ${lineItems.map((i) => `${i.description || i.name} x${i.quantity ?? 1} = ${money(i.total ?? (i.quantity || 1) * (i.unitPrice || 0))}`).join('; ')}` : null,
+    notes ? `Notes: ${notes}` : null,
     `Amount due: ${invoiceAmount}`,
-  ].join('\n');
+  ].filter(Boolean).join('\n');
 
   return getClient().messages.create(domain, {
     from: `Lasting Legacy Cleaners <noreply@${domain}>`,
-    to: "lemightyeagle@gmail.com",
-    subject: `Invoice ${invoiceNumber} — ${requestNumber}`,
-    text: `A memorial restoration invoice is ready for accounts payable.\n\n${details}`,
-    html: `
-      <p>A memorial restoration invoice is ready for accounts payable.</p>
-      <ul>
-        <li><strong>Invoice:</strong> ${escapeHtml(invoiceNumber)}</li>
-        <li><strong>Request:</strong> ${escapeHtml(requestNumber)}</li>
-        <li><strong>Customer:</strong> ${escapeHtml(customerName || '—')}</li>
-        <li><strong>Property:</strong> ${escapeHtml(propertyName || '—')}</li>
-        <li><strong>Amount due:</strong> ${escapeHtml(invoiceAmount)}</li>
-      </ul>
-    `,
+    to: recipientEmail || "lemightyeagle@gmail.com",
+    subject: `Invoice ${invoiceNumber} — ${requestNumber} — ${escapeHtml(customerName || 'Request')}`,
+    text,
+    html,
   });
 };
-
 
 module.exports = {
   sendDailyReminderEmail,

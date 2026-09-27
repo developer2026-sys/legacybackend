@@ -6,6 +6,7 @@ const multer = require('multer');
 const path = require('path');
 const crypto = require('crypto');
 const { TeamMember } = require('../models');
+const { seedDefaultsForNewAccount } = require('../services/seedNewAccountDefaults');
 const fs = require('fs');
 const teammember = require('../models/teammember');
 const { changePartnerStatus } = require('../utils/userLifecycle');
@@ -236,16 +237,37 @@ module.exports = (models) => {
     let slug = base || 'client-account';
     let suffix = 2;
     while (await ClientAccount.findOne({ where: { slug } })) slug = `${base || 'client-account'}-${suffix++}`;
-    const account = await ClientAccount.create({
-      name: String(name).trim(),
-      slug,
-      accountType: accountType === 'master' ? 'master' : 'client',
-      parentClientAccountId: parentClientAccountId || null,
-      status: 'active',
-    });
-    res.status(201).json({ account });
-  });
+  //   const account = await ClientAccount.create({
+  //     name: String(name).trim(),
+  //     slug,
+  //     accountType: accountType === 'master' ? 'master' : 'client',
+  //     parentClientAccountId: parentClientAccountId || null,
+  //     status: 'active',
+  //   });
+  //   res.status(201).json({ account });
+  // });
 
+  const account = await ClientAccount.create({
+    name: String(name).trim(),
+    slug,
+    accountType: accountType === 'master' ? 'master' : 'client',
+    parentClientAccountId: parentClientAccountId || null,
+    status: 'active',
+  });
+  await seedDefaultsForNewAccount(account.id);
+  await Location.bulkCreate(
+    DEFAULT_LOCATIONS.map((loc) => ({
+      clientAccountId: account.id,
+      name: loc.name,
+      address: loc.address,
+      city: loc.city,
+      state: loc.state,
+      zip: loc.zip,
+      status: 'active',
+    }))
+  );
+  res.status(201).json({ account });
+});
   const createClientLocation = safe(async (req, res) => {
     const account = await ClientAccount.findByPk(req.params.id);
     if (!account) return res.status(404).json({ message: 'Client account not found.' });

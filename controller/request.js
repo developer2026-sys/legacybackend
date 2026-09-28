@@ -1,6 +1,12 @@
 'use strict';
 
 const { Op } = require('sequelize');
+
+const { uploadAndCleanup } = require('../utils/cloudinary');
+
+const multer = require('multer');
+
+
 const {
   MemorialRequest,
   RequestPhoto,
@@ -19,7 +25,7 @@ const {
   WorkOrder,
   Schedule,
 } = require('../models');
-const multer = require('multer');
+
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -113,6 +119,9 @@ const operationsInclude = (clientAccountId) => !WorkOrder ? [] : [{
     required: false,
   }] : [],
 }];
+
+
+
 
 const settingRequestInclude = (clientAccountId) => !MonumentSettingRequest ? [] : [{
   model: MonumentSettingRequest,
@@ -276,10 +285,26 @@ const upload = multer({
 });
  
 // Export the multer middleware so the router can apply it
-const uploadPhotos = upload.array('photos', 10); // up to 10 photos per request
- 
 
-const removeIncomingFiles = (req) => (req.files || []).forEach((file) => fs.unlink(file.path, () => {}));
+const os = require('os');
+
+const photoStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, os.tmpdir()),
+  filename: (req, file, cb) =>
+    cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}-${file.originalname.replace(/\s+/g, '_')}`),
+});
+
+const uploadPhotos = multer({
+  storage: photoStorage,
+  fileFilter: (req, file, cb) => {
+    if (/^image\/(jpeg|png|webp)$/.test(file.mimetype)) return cb(null, true);
+    cb(new Error('Only JPG, PNG or WEBP images are allowed.'));
+  },
+  limits: { fileSize: 4 * 1024 * 1024, files: 10 },
+}).array('photos', 10);
+
+
+
 
 const fieldValue = (value) => String(value ?? '').trim();
 
@@ -364,19 +389,30 @@ const getCurrentPricing = async (pricingId, locationId, clientAccountId) => {
   return current?.id === pricing.id ? pricing : null;
 };
 
-const persistPhotos = async (req, requestId) => {
-  if (!req.files?.length) return;
-  await RequestPhoto.bulkCreate(req.files.map((file) => ({
-    requestId,
-    clientAccountId: req.clientAccountId,
-    storagePath: path.relative(path.join(__dirname, '..'), file.path),
-    attachmentType: 'photo',
-    originalName: file.originalname,
-    mimeType: file.mimetype,
-    sizeBytes: file.size,
-    uploadedByUserId: req.partner.id,
-  })));
+
+const removeIncomingFiles = (req) => {
+  (req.files || []).forEach((file) => {
+    if (file?.path) fs.unlink(file.path, () => {});
+  });
 };
+const persistPhotos = async (req, requestId) => {
+  const files = req.files || [];
+  const saved = [];
+  for (const file of files) {
+    const result = await uploadAndCleanup(file, `requests/${requestId}`);
+    const photo = await RequestPhoto.create({
+      requestId,
+      clientAccountId: req.clientAccountId,
+      attachmentType: 'request_photo',
+      storagePath: result.url,          // full Cloudinary URL
+      originalName: result.originalName,
+      mimeType: result.mimeType,
+    });
+    saved.push(photo);
+  }
+  return saved;
+};
+
 
 const saveDraft = async (req, res) => {
   try {

@@ -5,6 +5,8 @@
  * Delivery details belong to notificationService.js.
  */
 
+
+
 const createNotificationRecipients = ({ Partner, ClientAccount, Op }) => ({
   async forRequestSubmitted(clientAccountId) {
     if (!Partner?.findAll) return [];

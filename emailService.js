@@ -390,9 +390,6 @@ const sendApInvoiceEmail = async ({
   amount,
   status,
   createdAt,
-  dueDate,
-  paidAt,
-  paymentMethod,
   notes,
   lineItems = [],
   packageName,
@@ -408,6 +405,13 @@ const sendApInvoiceEmail = async ({
     '"': '&quot;',
     "'": '&#39;',
   }[char]));
+
+  console.log('AP invoice email payload:', {
+    customerEmail, customerPhone, memorialLocation, advisorName,
+    packageName, createdAt, dueDate, paidAt, paymentMethod,
+  });
+
+  
   const money = (value) => `$${Number(value || 0).toFixed(2)}`;
   const formatDate = (value) => (value
     ? new Date(value).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })
@@ -487,10 +491,8 @@ const sendApInvoiceEmail = async ({
               <div class="info-item"><span class="info-label">Memorial Location</span><span class="info-value">${escapeHtml(memorialLocation || '—')}</span></div>
               <div class="info-item"><span class="info-label">Advisor</span><span class="info-value">${escapeHtml(advisorName || '—')}</span></div>
               <div class="info-item"><span class="info-label">Package</span><span class="info-value">${escapeHtml(packageName || '—')}</span></div>
-              <div class="info-item"><span class="info-label">Created</span><span class="info-value">${escapeHtml(formatDate(createdAt))}</span></div>
-              <div class="info-item"><span class="info-label">Due Date</span><span class="info-value">${escapeHtml(dueDate ? formatDate(dueDate) : '—')}</span></div>
-              <div class="info-item"><span class="info-label">Paid At</span><span class="info-value">${escapeHtml(paidAt ? formatDate(paidAt) : '—')}</span></div>
-              <div class="info-item"><span class="info-label">Payment Method</span><span class="info-value">${escapeHtml(paymentMethod || '—')}</span></div>
+                           <div class="info-item"><span class="info-label">Created</span><span class="info-value">${escapeHtml(formatDate(createdAt))}</span></div>
+            
             </div>
           </div>
 
@@ -552,9 +554,6 @@ const sendApInvoiceEmail = async ({
     `Advisor: ${advisorName || '—'}`,
     `Package: ${packageName || '—'}`,
     `Created: ${formatDate(createdAt)}`,
-    dueDate ? `Due: ${formatDate(dueDate)}` : null,
-    paidAt ? `Paid: ${formatDate(paidAt)}` : null,
-    paymentMethod ? `Payment Method: ${paymentMethod}` : null,
     lineItems.length ? `Line items: ${lineItems.map((i) => `${i.description || i.name} x${i.quantity ?? 1} = ${money(i.total ?? (i.quantity || 1) * (i.unitPrice || 0))}`).join('; ')}` : null,
     notes ? `Notes: ${notes}` : null,
     `Amount due: ${invoiceAmount}`,

@@ -13,6 +13,7 @@
   "dependencies": {
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
+    "cloudinary": "^2.11.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
@@ -20,7 +21,7 @@
     "jsonwebtoken": "^9.0.3",
     "mailgun.js": "^13.2.0",
     "moment-timezone": "^0.6.2",
-    "multer": "^2.1.1",
+    "multer": "^2.4.0",
     "mysql2": "^3.24.4",
     "node-cron": "^4.5.0",
     "nodemailer": "^9.0.1",

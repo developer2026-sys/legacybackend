@@ -933,14 +933,31 @@ module.exports = (models) => {
         if (clientAccount?.accountsPayableEmail) {
           try {
             const invoiceRecipients = await notificationRecipients.forInvoiceCreated(request.clientAccountId);
+
+            // Advisor isn't loaded on `request` here, so look it up
+            const advisor = request.partner
+              || (request.partnerId && Partner?.findByPk
+                ? await Partner.findByPk(request.partnerId)
+                : null);
+
             const invoiceNotifications = await notificationService.sendNotifications({
               type: NOTIFICATION_EVENTS.INVOICE_CREATED,
               payload: {
                 invoiceId: invoice.id,
                 requestNumber: request.requestNumber || `#${request.id}`,
+                status: invoice.paymentStatus || 'PENDING',
                 customerName: request.customerName,
-                propertyName: request.memorialLocation,
+                customerEmail: request.customerEmail,
+                customerPhone: request.customerPhone,
+                propertyName: request.location?.name || request.memorialLocation,
+                memorialLocation: request.memorialLocation,
+                advisorName: advisor?.contactName || advisor?.username || advisor?.email,
+                packageName: request.packageNameSnapshot || request.package?.name || request.packageType,
                 amount: invoice.amount,
+                createdAt: invoice.issuedAt || invoice.createdAt,
+                notes: request.notes,
+                restorationTotal: request.restorationPrice,
+                revenueShareTotal: request.revenueShare,
               },
             }, invoiceRecipients);
             invoiceNotifications.forEach((result) => {

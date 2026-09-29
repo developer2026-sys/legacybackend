@@ -81,6 +81,10 @@ module.exports = (sequelize) => {
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: true,
     },
+    term: {
+      type: DataTypes.STRING(20),
+      allowNull: true,
+    },
     clientAccountId: {
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: true,

@@ -137,5 +137,42 @@ module.exports = (models) => {
     monumentAdminController.uploadMonumentSettingDocuments,
   );
 
+  
+   // Delete a request (super_admin only, enforced by router.use above)
+   router.delete('/requests/:id', async (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({ message: 'Invalid request id.' });
+    }
+
+    const request = await MemorialRequest.findByPk(id);
+    if (!request) {
+      return res.status(404).json({ message: 'Request not found.' });
+    }
+
+    const t = await MemorialRequest.sequelize.transaction();
+    
+    try {
+      // Remove child rows first so foreign keys don't block the delete.
+      // Names that don't exist in your models are skipped.
+      for (const name of ['RequestPhoto', 'RequestStatusHistory', 'Invoice']) {
+        const Model = models[name];
+        if (Model && Model.rawAttributes.requestId) {
+          await Model.destroy({ where: { requestId: id }, transaction: t });
+        }
+      }
+
+      await request.destroy({ transaction: t });
+      await t.commit();
+      return res.json({ message: 'Request deleted.', id });
+    } catch (e) {
+      await t.rollback();
+      console.error('Delete request failed:', e);
+      return res.status(500).json({
+        message: e?.parent?.sqlMessage || 'Could not delete this request.',
+      });
+    }
+  });
+
   return router;
 };

@@ -1,7 +1,7 @@
 'use strict';
 
 function partnershipSettingsController(models) {
-  const { PartnershipSettings, Partner } = models;
+  const { Partner, PartnershipSettings, MemorialRequest } = require('../models');
 
   const getSettings = async (req, res) => {
     try {
@@ -14,7 +14,21 @@ function partnershipSettingsController(models) {
         defaults: { partnerId, clientAccountId: partner.clientAccountId },
       });
 
-      res.json({ settings });
+      const { Op } = require('sequelize');
+
+      const year = new Date().getFullYear();
+      const yearStart = new Date(year, 0, 1);
+      const yearEnd = new Date(year + 1, 0, 1);
+      
+      const completedMemorials = await MemorialRequest.count({
+        where: {
+          partnerId: req.params.id,
+          status: 'APPROVED', 
+          approvedAt: { [Op.gte]: yearStart, [Op.lt]: yearEnd },
+        },
+      });
+      
+      res.json({ settings, completedMemorials });
     } catch (err) {
       console.error('getSettings error:', err);
       res.status(500).json({ message: 'Failed to load partner settings.' });

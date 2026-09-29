@@ -325,6 +325,7 @@ const getRequestFields = (body, property) => ({
   space: fieldValue(body.space),
   vaseInfo: fieldValue(body.vaseInfo),
   notes: fieldValue(body.notes),
+  term: fieldValue(body.term) || null,
 });
 
 const validateSubmission = ({ fields, locationId, pricingId, photosRequired, existingPhotoCount }) => {

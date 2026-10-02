@@ -169,22 +169,37 @@ module.exports = (models) => {
 
   const resetPassword = safe(async (req, res) => {
     const { email, currentPassword, newPassword } = req.body;
-    if (!currentPassword || !newPassword)
-      return res.status(400).json({ message: 'Current password and newPassword are required.' });
-    if (email && String(email).trim().toLowerCase() !== String(req.admin.email).toLowerCase()) {
-      return res.status(403).json({ message: 'You may only update your own password.' });
+  console.log(email)
+  console.log(currentPassword)
+  console.log(newPassword)
+    if (!email || !currentPassword || !newPassword) {
+      return res
+        .status(400)
+        .json({ message: 'Email, current password and new password are required.' });
     }
-    if (String(newPassword).length < 8)
+    if (String(newPassword).length < 8) {
       return res.status(400).json({ message: 'Password must be at least 8 characters.' });
-
-    const admin = await Admin.findByPk(req.admin.id);
-    if (!admin) return res.status(401).json({ message: 'Unauthorized.' });
-    const valid = await bcrypt.compare(currentPassword, admin.password);
-    if (!valid) return res.status(401).json({ message: 'Current password is incorrect.' });
-
+    }
+    if (newPassword === currentPassword) {
+      return res
+        .status(400)
+        .json({ message: 'New password must be different from the current password.' });
+    }
+  
+    const normalizedEmail = String(email).trim().toLowerCase();
+  
+    const admin = await Admin.findOne({ where: { email: normalizedEmail } });
+  
+    // Same message for "no such admin" and "wrong password" so attackers
+    // can't use this endpoint to find out which emails are valid admins.
+    const valid = admin ? await bcrypt.compare(currentPassword, admin.password) : false;
+    if (!admin || !valid) {
+      return res.status(401).json({ message: 'Invalid email or current password.' });
+    }
+  
     admin.password = await bcrypt.hash(newPassword, 12);
     await admin.save();
-
+  
     res.json({ message: 'Password updated successfully.' });
   });
 

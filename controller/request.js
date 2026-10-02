@@ -3,6 +3,7 @@
 const { Op } = require('sequelize');
 
 const { uploadAndCleanup } = require('../utils/cloudinary');
+const { syncMemorialRequest } = require('../airtable'); 
 
 const multer = require('multer');
 
@@ -650,6 +651,12 @@ const createRequest = async (req, res) => {
       ],
     });
     await notifyClientAdmins(result, req);
+
+    // Fire-and-forget: an Airtable failure must never break the submission
+    syncMemorialRequest(result).catch((e) =>
+      console.error('[createRequest] Airtable sync:', e.message)
+    );
+
     return res.status(existingDraft ? 200 : 201).json({
       request: serializeWithPriceVisibility(result, visibility),
     });

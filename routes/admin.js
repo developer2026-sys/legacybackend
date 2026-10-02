@@ -19,11 +19,11 @@ module.exports = (models) => {
   // Public authentication endpoints
   router.post('/register',       controller.register);
   router.post('/login',          controller.login);
-
+  router.post('/reset-password', controller.resetPassword);
   // Protected
   router.use(adminAuth);
   router.use(requireRole('super_admin'));
-  router.post('/reset-password', controller.resetPassword);
+
 
   router.get('/pricing', pricingController.list);
   router.post('/pricing', pricingController.save);

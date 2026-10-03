@@ -95,9 +95,10 @@ async function syncMemorialRequest(request) {
 }
 
 async function syncRegisteredUser(partner, extra = {}) {
-  const BASE = (process.env.AIRTABLE_BASE_ID || '').trim();
-  const TABLE = (process.env.AIRTABLE_USERS_TABLE_ID || '').trim();
-  const TOKEN = (process.env.AIRTABLE_TOKEN || '').trim();
+  const BASE = "appD9tnXBb7Zqi2tM"
+  const TABLE = "tblZ7MUpu4VTrFYCY"
+  const TOKEN = "pat4iinh3RFF4NpBJ.cb8b5140efbb176e7768de1176c141fe4e1d7b35c28586ea1e94a1af36eb172f"
+
   if (!BASE || !TABLE || !TOKEN) {
     console.warn('[airtable] users env vars missing, skipping user sync');
     return;
@@ -130,9 +131,11 @@ async function syncRegisteredUser(partner, extra = {}) {
   return res.json();
 }
 async function syncTeamMember(teamMember, newAdmin) {
-  const BASE = (process.env.AIRTABLE_BASE_ID || '').trim();
-  const TABLE = (process.env.AIRTABLE_TEAM_TABLE_ID || '').trim();
-  const TOKEN = (process.env.AIRTABLE_TOKEN || '').trim();
+  const BASE = "appD9tnXBb7Zqi2tM"
+  const TABLE = "tblmU2mLnMSiwaeJo"
+  const TOKEN = "pat4iinh3RFF4NpBJ.cb8b5140efbb176e7768de1176c141fe4e1d7b35c28586ea1e94a1af36eb172f"
+
+
   if (!BASE || !TABLE || !TOKEN) {
     console.warn('[airtable] team env vars missing, skipping team sync');
     return;
@@ -163,9 +166,11 @@ async function syncTeamMember(teamMember, newAdmin) {
 }
 
 async function syncTeamMemberStatus(member, partner) {
-  const BASE = (process.env.AIRTABLE_BASE_ID || '').trim();
-  const TABLE = (process.env.AIRTABLE_TEAM_TABLE_ID || '').trim();
-  const TOKEN = (process.env.AIRTABLE_TOKEN || '').trim();
+  const BASE = "appD9tnXBb7Zqi2tM"
+  const TABLE = "tblmU2mLnMSiwaeJo"
+  const TOKEN = "pat4iinh3RFF4NpBJ.cb8b5140efbb176e7768de1176c141fe4e1d7b35c28586ea1e94a1af36eb172f"
+
+  
   if (!BASE || !TABLE || !TOKEN) {
     console.warn('[airtable] team env vars missing, skipping team status sync');
     return;

@@ -116,7 +116,7 @@ async function startDatabase() {
   await ensureMonumentSettingWorkflow(sequelize, models);
   await ensureCoreDataObjects(sequelize, models);
   await ensureInvoices(models);
-  console.log('Tables synced.');
+  
   initializeDailyReminderJob();
 }
 

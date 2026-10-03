@@ -11,6 +11,7 @@ const fs = require('fs');
 const teammember = require('../models/teammember');
 const { changePartnerStatus } = require('../utils/userLifecycle');
 const { Op } = require('sequelize');
+const { syncTeamMemberStatus, syncMemorialRequest } = require('../airtable'); 
 const {
   REQUEST_STATUSES,
   transitionRequestRecord,
@@ -585,6 +586,9 @@ module.exports = (models) => {
       result.request.status,
       'Payment manually confirmed by Super Admin.',
     );
+    syncMemorialRequest(result.request).catch((e) =>
+      console.error('[confirmInvoicePayment] Airtable sync:', e.message)
+    );
     return res.json({
       message: 'Payment confirmed.',
       invoice: result.invoice,
@@ -802,6 +806,10 @@ module.exports = (models) => {
       null,
     );
     await notifyAdvisorOfRequestStatus(request, 'UNDER_REVIEW', null);
+    syncMemorialRequest(request).catch((e) =>
+      console.error('[markRequestUnderReview] Airtable sync:', e.message)
+    );
+
 
     return res.json({
       message: 'Request opened for review.',
@@ -989,7 +997,9 @@ module.exports = (models) => {
     for (const entry of historyEntries) {
       await notifyAdvisorOfRequestStatus(request, entry.toStatus, entry.reason);
     }
-
+  syncMemorialRequest(request).catch((e) =>
+      console.error('[updateRequestStatus] Airtable sync:', e.message)
+    );
     res.json({
       message: 'Status updated.',
       request: {
@@ -1109,95 +1119,99 @@ module.exports = (models) => {
     });
   });
 
-  const approvePartnerTeamMember = safe(async (req, res) => {
-    const adminId = req.admin.id;
-    const { id } = req.params;
-  
-    const member = await PartnerTeamMember.findByPk(id);
-    if (!member)
-      return res.status(404).json({ message: 'Team member not found.' });
-  
-    if (member.status !== 'pending')
-      return res.status(409).json({ message: 'Only pending requests can be approved.' });
+    const approvePartnerTeamMember = safe(async (req, res) => {
+      const adminId = req.admin.id;
+      const { id } = req.params;
+    
+      const member = await PartnerTeamMember.findByPk(id);
+      if (!member)
+        return res.status(404).json({ message: 'Team member not found.' });
+    
+      if (member.status !== 'pending')
+        return res.status(409).json({ message: 'Only pending requests can be approved.' });
 
-    const partner = await Partner.findByPk(member.partner_id);
-    if (!partner) return res.status(404).json({ message: 'Partner not found.' });
+      const partner = await Partner.findByPk(member.partner_id);
+      if (!partner) return res.status(404).json({ message: 'Partner not found.' });
 
-    const requestType = member.request_type || 'add';
-    const newStatus = requestType === 'add' ? 'active' : 'inactive';
-    await changePartnerStatus({
-      partner,
-      newStatus,
-      UserStatusLog,
-      changedByType: 'super_admin',
-      changedById: adminId,
-      reason: req.body?.reason || member.reason || `Super Admin approved ${requestType} request.`,
-    });
-
-    member.status = 'approved';
-    member.approved_by_admin_id = adminId;
-    member.approved_at = new Date();
-    await member.save();
-
-    if (AuditLog?.create) {
-      const auditAction = {
-        add: 'TEAM_MEMBER_ADDED',
-        deactivate: 'TEAM_MEMBER_DEACTIVATED',
-        remove: 'TEAM_MEMBER_REMOVED',
-      }[requestType] || 'TEAM_MEMBER_STATUS_CHANGED';
-      await AuditLog.create({
-        userId: adminId,
-        userRole: req.admin.role || 'super_admin',
-        clientId: partner.clientAccountId ?? null,
-        propertyId: null,
-        requestId: null,
-        action: auditAction,
-        previousStatus: 'pending',
-        newStatus: 'approved',
-        timestamp: new Date(),
-        ipAddress: req.ip || null,
-        notes: member.reason || null,
+      const requestType = member.request_type || 'add';
+      const newStatus = requestType === 'add' ? 'active' : 'inactive';
+      await changePartnerStatus({
+        partner,
+        newStatus,
+        UserStatusLog,
+        changedByType: 'super_admin',
+        changedById: adminId,
+        reason: req.body?.reason || member.reason || `Super Admin approved ${requestType} request.`,
       });
-    }
 
-    if (partner.clientAccountId) {
-      try {
-        const teamMemberRecipients = await notificationRecipients.forTeamMemberStatusChanged(partner.clientAccountId);
-        const teamMemberNotifications = await notificationService.sendNotifications({
-          type: NOTIFICATION_EVENTS.TEAM_MEMBER_STATUS_CHANGED,
-          payload: {
-            memberEmail: partner.email,
-            requestType,
-            status: 'approved',
-            reason: member.reason,
-          },
-        }, teamMemberRecipients);
-        teamMemberNotifications.forEach((result) => {
-          if (result.status === 'rejected') {
-            console.error('[Team member notification] Delivery failed:', result.reason?.message || result.reason);
-          }
-        });
-      } catch (error) {
-        console.error('[Team member notification] Could not load recipients:', error.message);
-      }
-    }
+      member.status = 'approved';
+      member.approved_by_admin_id = adminId;
+      member.approved_at = new Date();
+      await member.save();
   
-    res.json({
+      syncTeamMemberStatus(member, partner).catch((e) =>
+        console.error('[approvePartnerTeamMember] Airtable sync:', e.message)
+      );
+  
+      if (AuditLog?.create) {
+        const auditAction = {
+          add: 'TEAM_MEMBER_ADDED',
+          deactivate: 'TEAM_MEMBER_DEACTIVATED',
+          remove: 'TEAM_MEMBER_REMOVED',
+        }[requestType] || 'TEAM_MEMBER_STATUS_CHANGED';
+        await AuditLog.create({
+          userId: adminId,
+          userRole: req.admin.role || 'super_admin',
+          clientId: partner.clientAccountId ?? null,
+          propertyId: null,
+          requestId: null,
+          action: auditAction,
+          previousStatus: 'pending',
+          newStatus: 'approved',
+          timestamp: new Date(),
+          ipAddress: req.ip || null,
+          notes: member.reason || null,
+        });
+      }
 
-      message: 'Team member approved successfully.',
-      teamMember: {
-        id: member.id,
-        partner_id: member.partner_id,
-        invited_by_partner_id: member.invited_by_partner_id,
-        status: member.status,
-        request_type: requestType,
-        reason: member.reason,
-        userStatus: partner.status,
-        approved_by_admin_id: member.approved_by_admin_id,
-        approved_at: member.approved_at,
-      },
+      if (partner.clientAccountId) {
+        try {
+          const teamMemberRecipients = await notificationRecipients.forTeamMemberStatusChanged(partner.clientAccountId);
+          const teamMemberNotifications = await notificationService.sendNotifications({
+            type: NOTIFICATION_EVENTS.TEAM_MEMBER_STATUS_CHANGED,
+            payload: {
+              memberEmail: partner.email,
+              requestType,
+              status: 'approved',
+              reason: member.reason,
+            },
+          }, teamMemberRecipients);
+          teamMemberNotifications.forEach((result) => {
+            if (result.status === 'rejected') {
+              console.error('[Team member notification] Delivery failed:', result.reason?.message || result.reason);
+            }
+          });
+        } catch (error) {
+          console.error('[Team member notification] Could not load recipients:', error.message);
+        }
+      }
+    
+      res.json({
+
+        message: 'Team member approved successfully.',
+        teamMember: {
+          id: member.id,
+          partner_id: member.partner_id,
+          invited_by_partner_id: member.invited_by_partner_id,
+          status: member.status,
+          request_type: requestType,
+          reason: member.reason,
+          userStatus: partner.status,
+          approved_by_admin_id: member.approved_by_admin_id,
+          approved_at: member.approved_at,
+        },
+      });
     });
-  });
   
   const denyPartnerTeamMember = safe(async (req, res) => {
     const adminId = req.admin.id;
@@ -1215,6 +1229,13 @@ module.exports = (models) => {
     member.approved_at = new Date();
     await member.save();
 
+    const deniedPartner = await Partner.findByPk(member.partner_id);
+    if (deniedPartner) {
+      syncTeamMemberStatus(member, deniedPartner).catch((e) =>
+        console.error('[denyPartnerTeamMember] Airtable sync:', e.message)
+      );
+    }
+    
     if (AuditLog?.create) {
       const auditAction = {
         add: 'TEAM_MEMBER_ADD_DENIED',

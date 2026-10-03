@@ -12,6 +12,7 @@ const {
   UserStatusLog,
 } = require('../models');
 const JWT_SECRET = process.env.JWT_SECRET;
+const { syncRegisteredUser , syncTeamMember} = require('../airtable');
 const { seedDefaultsForNewAccount } = require('../services/seedNewAccountDefaults');
 
 
@@ -77,7 +78,9 @@ const register = async (req, res) => {
       clientAccountId: clientAccount.id,
       emailRemindersEnabled: true,
     });
-
+    syncRegisteredUser(partner, { organization }).catch((e) =>
+      console.error('[register] Airtable sync:', e.message)
+    );
     return res.status(201).json({
       message: 'Account created successfully.',
       partner: {
@@ -230,33 +233,46 @@ const resetPassword = async (req, res) => {
       client_account_id: clientAccountId,
       status: { [Op.ne]: 'denied' },
     },
+    include: [{ model: Partner, as: 'partner', attributes: ['id', 'status'], required: true }],
     order: [['createdAt', 'ASC']],
   });
 
   // Keep only the latest request per invited partner, then drop anyone
-  // whose latest request is an approved removal — that slot is freed.
+  // who was removed or is inactive — those slots are freed.
   const latestByPartner = new Map();
   for (const invite of existingInvites) {
     latestByPartner.set(invite.partner_id, invite);
   }
-  const activeInvites = [...latestByPartner.values()].filter((invite) => (
-    !(invite.request_type === 'remove' && invite.status === 'approved')
-  ));
+  const activeInvites = [...latestByPartner.values()].filter((invite) => {
+    const removed = invite.request_type === 'remove' && invite.status === 'approved';
+    const inactive = invite.partner?.status === 'inactive';
+    return !removed && !inactive && invite.status === 'approved';
+  });
+  console.log('[invite] counted slots:', activeInvites.map((i) => ({
+    partner_id: i.partner_id,
+    request_type: i.request_type,
+    status: i.status,
+    partnerStatus: i.partner?.status,
+  })));
 
   if (activeInvites.length >= 3)
     return res.status(403).json({ message: 'You have reached the maximum limit of 3 team members.' });
     // Check if a partner with this email already exists
-    const existingPartner = await Partner.findOne({ where: { email } });
-    if (existingPartner)
-      return res.status(409).json({ message: 'An account with that email already exists.' });
-  
-    // Check if a team member with this email already exists
-    const existingMember = await PartnerTeamMember.findOne({
-      include: [{ model: Partner, as: 'partner', where: { email }, attributes: [] }],
-    });
-    if (existingMember)
-      return res.status(409).json({ message: 'A team member with that email already exists.' });
-    const hashed = await bcrypt.hash(password, 12);
+       // Check if a partner with this email already exists
+       const existingPartner = await Partner.findOne({ where: { email } });
+       let reusablePartner = null;
+       if (existingPartner) {
+         const latestMembership = await PartnerTeamMember.findOne({
+           where: { partner_id: existingPartner.id, client_account_id: clientAccountId },
+           order: [['createdAt', 'DESC']],
+         });
+         const sameAccount = existingPartner.clientAccountId === clientAccountId;
+         const notApproved = existingPartner.status !== 'active' || latestMembership?.status === 'denied';
+         if (!sameAccount || !notApproved)
+           return res.status(409).json({ message: 'An account with that email already exists.' });
+         reusablePartner = existingPartner;
+       }
+       const hashed = await bcrypt.hash(password, 12);
     const memberRole = ['client_admin', 'family_advisor'].includes(req.body.role)
       ? req.body.role
       : 'family_advisor';
@@ -294,8 +310,11 @@ const resetPassword = async (req, res) => {
       request_type: 'add',
       reason: req.body.reason || 'User added by client admin.',
     });
-    
-  
+
+    syncTeamMember(partnerTeamMember, newPartner).catch((e) =>
+      console.error('[invitePartnerTeamMember] Airtable sync:', e.message)
+    );
+
     res.status(201).json({
       message: 'Team member invited successfully. Pending admin approval.',
       teamMember: {

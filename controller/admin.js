@@ -104,42 +104,56 @@ module.exports = (models) => {
   };
   // ── AUTH ──────────────────────────────────────────────────────────────────
 
+  // const register = safe(async (req, res) => {
+  //   const { email, password } = req.body;
+  //   if (!email || !password)
+  //     return res.status(400).json({ message: 'Email and password are required.' });
+
+  //   const bootstrapSecret = process.env.ADMIN_BOOTSTRAP_SECRET;
+  //   const suppliedSecret = req.get('x-admin-bootstrap-key') || '';
+  //   if (!bootstrapSecret) {
+  //     return res.status(503).json({ message: 'Admin bootstrap is not configured.' });
+  //   }
+  //   const suppliedBytes = Buffer.from(suppliedSecret);
+  //   const expectedBytes = Buffer.from(bootstrapSecret);
+  //   if (
+  //     suppliedBytes.length !== expectedBytes.length
+  //     || !crypto.timingSafeEqual(suppliedBytes, expectedBytes)
+  //   ) {
+  //     return res.status(403).json({ message: 'A valid admin bootstrap key is required.' });
+  //   }
+
+  //   // Registration is a one-time bootstrap flow. Once a platform admin
+  //   // exists, creating another super_admin must require an authenticated
+  //   // administrative workflow instead of being publicly reachable.
+  //   if (await Admin.count()) {
+  //     return res.status(403).json({ message: 'Admin registration is disabled.' });
+  //   }
+
+  //   const exists = await Admin.findOne({ where: { email } });
+  //   if (exists)
+  //     return res.status(409).json({ message: 'An admin with that email already exists.' });
+
+  //   const hashed = await bcrypt.hash(password, 12);
+  //   const admin = await Admin.create({ email, password: hashed, role: 'super_admin' });
+
+  //   res.status(201).json({ message: 'Admin account created.', admin: { id: admin.id, email: admin.email } });
+  // });
+
   const register = safe(async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password)
       return res.status(400).json({ message: 'Email and password are required.' });
-
-    const bootstrapSecret = process.env.ADMIN_BOOTSTRAP_SECRET;
-    const suppliedSecret = req.get('x-admin-bootstrap-key') || '';
-    if (!bootstrapSecret) {
-      return res.status(503).json({ message: 'Admin bootstrap is not configured.' });
-    }
-    const suppliedBytes = Buffer.from(suppliedSecret);
-    const expectedBytes = Buffer.from(bootstrapSecret);
-    if (
-      suppliedBytes.length !== expectedBytes.length
-      || !crypto.timingSafeEqual(suppliedBytes, expectedBytes)
-    ) {
-      return res.status(403).json({ message: 'A valid admin bootstrap key is required.' });
-    }
-
-    // Registration is a one-time bootstrap flow. Once a platform admin
-    // exists, creating another super_admin must require an authenticated
-    // administrative workflow instead of being publicly reachable.
+  
     if (await Admin.count()) {
       return res.status(403).json({ message: 'Admin registration is disabled.' });
     }
-
-    const exists = await Admin.findOne({ where: { email } });
-    if (exists)
-      return res.status(409).json({ message: 'An admin with that email already exists.' });
-
+  
     const hashed = await bcrypt.hash(password, 12);
     const admin = await Admin.create({ email, password: hashed, role: 'super_admin' });
-
+  
     res.status(201).json({ message: 'Admin account created.', admin: { id: admin.id, email: admin.email } });
   });
-
   const login = safe(async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password)

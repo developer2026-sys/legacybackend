@@ -78,9 +78,12 @@ const register = async (req, res) => {
       clientAccountId: clientAccount.id,
       emailRemindersEnabled: true,
     });
-    syncRegisteredUser(partner, { organization }).catch((e) =>
-      console.error('[register] Airtable sync:', e.message)
-    );
+    try {
+      await syncRegisteredUser(partner, { organization });
+    } catch (e) {
+      console.error('[register] Airtable sync failed:', e.message);
+    }
+    
     return res.status(201).json({
       message: 'Account created successfully.',
       partner: {

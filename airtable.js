@@ -18,14 +18,68 @@ const cfg = (tableId) => {
 };
 
 // Field names must match your Airtable column names exactly.
+// function toAirtableFields(r) {
+//   const fields = {
+//     'Request Number': r.requestNumber,
+//     'Status': r.status,
+//     'Term': r.term,
+//     'Client Account ID': r.clientAccountId,
+//     'Location ID': r.locationId,
+//   'Submitted By User ID': r.submittedByUserId ?? r.partnerId,
+//     'Submitted At': iso(r.submittedAt),
+//     'Package Type': r.packageType,
+//     'Package ID': r.packageId,
+//     'Package Name Snapshot': r.packageNameSnapshot,
+//     'Package Price': r.packagePrice != null ? Number(r.packagePrice) : null,
+//     'Restoration Price': r.restorationPrice != null ? Number(r.restorationPrice) : null,
+//     'Revenue Share': r.revenueShare != null ? Number(r.revenueShare) : null,
+//     'Invoice Amount': r.invoiceAmount != null ? Number(r.invoiceAmount) : null,
+//     'Draft Pricing ID': r.draftPricingId,
+//     'Pricing Effective Date': dateOnly(r.pricingEffectiveDate),
+//     'Customer Name': r.customerName,
+//     'Customer Phone': r.customerPhone,
+//     'Customer Email': r.customerEmail,
+//     'Name On Memorial': r.nameOnMemorial,
+//     'Memorial Size': r.memorialSize,
+//     'Memorial Type': r.memorialType,
+//     'Memorial Location': r.memorialLocation,
+//     'Cemetery Name': r.cemeteryName,
+//     'Section': r.section,
+//     'Lot': r.lot,
+//     'Space': r.space,
+//     'Vase Info': r.vaseInfo,
+//     'Notes': r.notes,
+//     'Admin Notes': r.adminNotes,
+//     'Approved By': r.approvedBy,
+//     'Approved At': iso(r.approvedAt),
+//     'Denied By': r.deniedBy,
+//     'Denied At': iso(r.deniedAt),
+//   };
+
+//   return Object.fromEntries(
+//     Object.entries(fields).filter(([, v]) => v !== null && v !== undefined && v !== '')
+//   );
+// }
+
 function toAirtableFields(r) {
+  const APP_URL = (process.env.APP_URL || '').replace(/\/$/, '');
+
+  const photoUrls = (Array.isArray(r.photos) ? r.photos : [])
+    .map((p) => {
+      const raw = typeof p === 'string' ? p : p?.url || p?.publicUrl || p?.storagePath || p?.path;
+      if (!raw) return null;
+      if (/^https?:\/\//.test(raw)) return raw;
+      return APP_URL ? `${APP_URL}/${String(raw).replace(/^\/+/, '')}` : null;
+    })
+    .filter(Boolean);
+
   const fields = {
     'Request Number': r.requestNumber,
     'Status': r.status,
     'Term': r.term,
     'Client Account ID': r.clientAccountId,
     'Location ID': r.locationId,
-  'Submitted By User ID': r.submittedByUserId ?? r.partnerId,
+    'Submitted By User ID': r.submittedByUserId ?? r.partnerId,
     'Submitted At': iso(r.submittedAt),
     'Package Type': r.packageType,
     'Package ID': r.packageId,
@@ -54,6 +108,8 @@ function toAirtableFields(r) {
     'Approved At': iso(r.approvedAt),
     'Denied By': r.deniedBy,
     'Denied At': iso(r.deniedAt),
+
+    // Attachment field in Airtable
     'Photos': photoUrls.length ? photoUrls.map((url) => ({ url })) : null,
   };
 

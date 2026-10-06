@@ -110,7 +110,7 @@ function toAirtableFields(r) {
     'Denied At': iso(r.deniedAt),
 
     // Attachment field in Airtable
-    'Photos': photoUrls.length ? photoUrls.map((url) => ({ url })) : null,
+    'Photos': photoUrls.length ? JSON.stringify(photoUrls) : null,
   };
 
   return Object.fromEntries(

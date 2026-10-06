@@ -54,6 +54,7 @@ function toAirtableFields(r) {
     'Approved At': iso(r.approvedAt),
     'Denied By': r.deniedBy,
     'Denied At': iso(r.deniedAt),
+    'Photos': photoUrls.length ? photoUrls.map((url) => ({ url })) : null,
   };
 
   return Object.fromEntries(

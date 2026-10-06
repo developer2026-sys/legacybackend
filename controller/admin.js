@@ -148,7 +148,7 @@ module.exports = (models) => {
     if (await Admin.count()) {
       return res.status(403).json({ message: 'Admin registration is disabled.' });
     }
-  
+    
     const hashed = await bcrypt.hash(password, 12);
     const admin = await Admin.create({ email, password: hashed, role: 'super_admin' });
   

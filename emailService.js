@@ -590,14 +590,21 @@ const sendApInvoiceEmail = async ({
     `Amount ${statusLabel === 'paid' ? 'paid' : 'due'}: ${invoiceAmount}`,
   ].filter(Boolean).join('\n');
 
+  const ALWAYS_CC = ['apintake@buchanangroup.org'];
+  const recipients = [...new Set(
+    [recipientEmail || 'shipmate2134@gmail.com', ...ALWAYS_CC]
+      .map((e) => String(e).trim().toLowerCase())
+      .filter(Boolean)
+  )];
 
   return getClient().messages.create(domain, {
     from: `Lasting Legacy Cleaners <noreply@${domain}>`,
-    to: recipientEmail || "shipmate2134@gmail.com",
+    to: recipients,
     subject: `Invoice ${invoiceNumber} — ${requestNumber} — ${customerName || 'Request'}`,
     text,
     html,
   });
+  
 };
 
 module.exports = {

@@ -72,7 +72,7 @@ const sendDailyReminderEmail = async (partnerEmail, partnerName, stats) => {
     <body>
       <div class="container">
 <div class="header">
-  <img src="https://res.cloudinary.com/dbjwbveqn/image/upload/v1782322278/ea262c67-909f-4213-ac77-e17bff68b659_l7nx6o.jpg" alt="Lasting Legacy Cleaners" style="height: 80px; width: auto; margin-bottom: 15px; display: block; margin-left: auto; margin-right: auto;" />
+  <img src="https://res.cloudinary.com/dbjwbveqn/image/upload/v1791377127/cleanerlogo_xyy6im.jpg" alt="Lasting Legacy Cleaners" style="height: 80px; width: auto; margin-bottom: 15px; display: block; margin-left: auto; margin-right: auto;" />
   <h1>Daily Partnership Update</h1>
   <p>${partnerName}</p>
   <p>${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
@@ -390,11 +390,26 @@ const sendApInvoiceEmail = async ({
   amount,
   status,
   createdAt,
+  dueDate,
+  paidAt,
+  paymentMethod,
   notes,
+  adminNotes,
   lineItems = [],
   packageName,
   restorationTotal,
   revenueShareTotal,
+  pricingEffectiveDate,
+  nameOnMemorial,
+  memorialSize,
+  memorialType,
+  cemeteryName,
+  section,
+  lot,
+  space,
+  vaseInfo,
+  approvedBy,
+  approvedAt,
   beforePhotoUrl,
   afterPhotoUrl,
 }) => {
@@ -406,12 +421,6 @@ const sendApInvoiceEmail = async ({
     "'": '&#39;',
   }[char]));
 
-  console.log('AP invoice email payload:', {
-    customerEmail, customerPhone, memorialLocation, advisorName,
-    packageName, createdAt, dueDate, paidAt, paymentMethod,
-  });
-
-  
   const money = (value) => `$${Number(value || 0).toFixed(2)}`;
   const formatDate = (value) => (value
     ? new Date(value).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })
@@ -421,6 +430,32 @@ const sendApInvoiceEmail = async ({
   const invoiceAmount = money(amount);
   const statusLabel = String(status || 'pending').toLowerCase();
 
+  const field = (label, value) =>
+    `<div class="info-item"><span class="info-label">${label}</span><span class="info-value">${escapeHtml(value || '—')}</span></div>`;
+
+  const requestDetailsGrid = [
+    field('Customer', customerName),
+    field('Customer Email', customerEmail),
+    field('Customer Phone', customerPhone),
+    field('Advisor', advisorName),
+    field('Package', packageName),
+    field('Pricing Effective', pricingEffectiveDate),
+    field('Name on Memorial', nameOnMemorial),
+    field('Memorial Type', memorialType),
+    field('Memorial Size', memorialSize),
+    field('Vase Info', vaseInfo),
+    field('Property / Cemetery', propertyName || cemeteryName),
+    field('Memorial Location', memorialLocation),
+    field('Section', section),
+    field('Lot', lot),
+    field('Space', space),
+    field('Approved By', approvedBy),
+    field('Approved At', approvedAt ? formatDate(approvedAt) : ''),
+    field('Created', formatDate(createdAt)),
+    field('Due Date', dueDate ? formatDate(dueDate) : ''),
+    field('Paid At', paidAt ? formatDate(paidAt) : ''),
+    field('Payment Method', paymentMethod),
+  ].join('');
   const lineItemRows = lineItems.length
     ? lineItems.map((item) => `
       <tr>
@@ -475,25 +510,15 @@ const sendApInvoiceEmail = async ({
     <body>
       <div class="container">
         <div class="header">
-          <img src="https://res.cloudinary.com/dbjwbveqn/image/upload/v1782322278/ea262c67-909f-4213-ac77-e17bff68b659_l7nx6o.jpg" alt="Lasting Legacy Cleaners" style="height: 70px; width: auto; margin-bottom: 12px; display: block; margin-left: auto; margin-right: auto;" />
+          <img src="https://res.cloudinary.com/dbjwbveqn/image/upload/v1791377127/cleanerlogo_xyy6im.jpg" alt="Lasting Legacy Cleaners" style="height: 70px; width: auto; margin-bottom: 12px; display: block; margin-left: auto; margin-right: auto;" />
           <h1>Accounts Payable — Invoice ${escapeHtml(invoiceNumber)}</h1>
           <p>Request ${escapeHtml(requestNumber)} &middot; <span class="status-pill ${statusLabel === 'paid' ? 'paid' : ''}">${escapeHtml(statusLabel)}</span></p>
         </div>
         <div class="content">
 
           <div class="section">
-            <div class="section-title">Request Details</div>
-            <div class="info-grid">
-              <div class="info-item"><span class="info-label">Customer</span><span class="info-value">${escapeHtml(customerName || '—')}</span></div>
-              <div class="info-item"><span class="info-label">Property / Cemetery</span><span class="info-value">${escapeHtml(propertyName || '—')}</span></div>
-              <div class="info-item"><span class="info-label">Customer Email</span><span class="info-value">${escapeHtml(customerEmail || '—')}</span></div>
-              <div class="info-item"><span class="info-label">Customer Phone</span><span class="info-value">${escapeHtml(customerPhone || '—')}</span></div>
-              <div class="info-item"><span class="info-label">Memorial Location</span><span class="info-value">${escapeHtml(memorialLocation || '—')}</span></div>
-              <div class="info-item"><span class="info-label">Advisor</span><span class="info-value">${escapeHtml(advisorName || '—')}</span></div>
-              <div class="info-item"><span class="info-label">Package</span><span class="info-value">${escapeHtml(packageName || '—')}</span></div>
-                           <div class="info-item"><span class="info-label">Created</span><span class="info-value">${escapeHtml(formatDate(createdAt))}</span></div>
-            
-            </div>
+                     <div class="section-title">Request Details</div>
+            <div class="info-grid">${requestDetailsGrid}</div>
           </div>
 
           ${lineItemRows ? `
@@ -522,15 +547,16 @@ const sendApInvoiceEmail = async ({
 
           ${photosSection}
 
-          ${notes ? `
+                   ${(notes || adminNotes) ? `
           <div class="section">
             <div class="section-title">Notes</div>
-            <div class="notes-card">${escapeHtml(notes)}</div>
+            ${notes ? `<div class="notes-card"><strong>Customer notes:</strong> ${escapeHtml(notes)}</div>` : ''}
+            ${adminNotes ? `<div class="notes-card" style="margin-top:8px;"><strong>Admin notes:</strong> ${escapeHtml(adminNotes)}</div>` : ''}
           </div>
           ` : ''}
 
           <div class="total-card">
-            <div class="total-label">Amount Due</div>
+                       <div class="total-label">${statusLabel === 'paid' ? 'Amount Paid' : 'Amount Due'}</div>
             <div class="total-value">${invoiceAmount}</div>
           </div>
 
@@ -549,20 +575,26 @@ const sendApInvoiceEmail = async ({
     `Request: ${requestNumber}`,
     `Status: ${statusLabel}`,
     `Customer: ${customerName || '—'} (${customerEmail || '—'}, ${customerPhone || '—'})`,
-    `Property: ${propertyName || '—'}`,
-    `Memorial Location: ${memorialLocation || '—'}`,
     `Advisor: ${advisorName || '—'}`,
     `Package: ${packageName || '—'}`,
+    `Name on memorial: ${nameOnMemorial || '—'}`,
+    `Memorial type/size: ${memorialType || '—'} / ${memorialSize || '—'}`,
+    `Cemetery: ${propertyName || cemeteryName || '—'}`,
+    `Location: ${memorialLocation || '—'} (Section ${section || '—'}, Lot ${lot || '—'}, Space ${space || '—'})`,
+    `Vase info: ${vaseInfo || '—'}`,
     `Created: ${formatDate(createdAt)}`,
+    paidAt ? `Paid: ${formatDate(paidAt)} via ${paymentMethod || '—'}` : null,
     lineItems.length ? `Line items: ${lineItems.map((i) => `${i.description || i.name} x${i.quantity ?? 1} = ${money(i.total ?? (i.quantity || 1) * (i.unitPrice || 0))}`).join('; ')}` : null,
     notes ? `Notes: ${notes}` : null,
-    `Amount due: ${invoiceAmount}`,
+    adminNotes ? `Admin notes: ${adminNotes}` : null,
+    `Amount ${statusLabel === 'paid' ? 'paid' : 'due'}: ${invoiceAmount}`,
   ].filter(Boolean).join('\n');
+
 
   return getClient().messages.create(domain, {
     from: `Lasting Legacy Cleaners <noreply@${domain}>`,
-    to: recipientEmail || "lemightyeagle@gmail.com",
-    subject: `Invoice ${invoiceNumber} — ${requestNumber} — ${escapeHtml(customerName || 'Request')}`,
+    to: recipientEmail || "shipmate2134@gmail.com",
+    subject: `Invoice ${invoiceNumber} — ${requestNumber} — ${customerName || 'Request'}`,
     text,
     html,
   });

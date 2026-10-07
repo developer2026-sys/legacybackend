@@ -12,6 +12,7 @@ const teammember = require('../models/teammember');
 const { changePartnerStatus } = require('../utils/userLifecycle');
 const { Op } = require('sequelize');
 const { syncTeamMemberStatus, syncMemorialRequest } = require('../airtable'); 
+const { sendApInvoiceEmail } = require('../emailService'); 
 const {
   REQUEST_STATUSES,
   transitionRequestRecord,
@@ -603,8 +604,72 @@ module.exports = (models) => {
     syncMemorialRequest(result.request).catch((e) =>
       console.error('[confirmInvoicePayment] Airtable sync:', e.message)
     );
+
+    // Send invoice email. A mail failure must NOT undo a committed payment.
+    let invoiceEmailSent = false;
+    try {
+      const r = result.request;
+      const inv = result.invoice;
+
+      const advisor = r.submittedByUserId && Partner?.findByPk
+        ? await Partner.findByPk(r.submittedByUserId)
+        : null;
+
+      const photos = typeof r.getPhotos === 'function' ? await r.getPhotos() : [];
+      const photoUrl = (type) => {
+        const p = photos.find((x) => x.attachmentType === type);
+        return p ? p.storagePath : undefined; // convert to public URL if needed
+      };
+
+      await sendApInvoiceEmail({
+        recipientEmail: process.env.AP_INVOICE_EMAIL,
+        invoiceId: inv.id,
+        requestNumber: r.requestNumber || r.id,
+        customerName: r.customerName,
+        customerEmail: r.customerEmail,
+        customerPhone: r.customerPhone,
+        propertyName: r.cemeteryName,
+        memorialLocation: r.memorialLocation,
+        advisorName: advisor?.contactName || advisor?.username,
+        amount: inv.amount ?? r.invoiceAmount,
+        status: inv.paymentStatus,
+        createdAt: inv.createdAt,
+        paidAt: new Date(`${inv.paidDate}T${inv.paidTime}Z`),
+        paymentMethod: 'Manual confirmation',
+        dueDate: inv.dueDate,
+        notes: r.notes,
+        adminNotes: r.adminNotes,
+        packageName: r.packageNameSnapshot || r.packageType,
+        restorationTotal: r.restorationPrice,
+        revenueShareTotal: r.revenueShare,
+        pricingEffectiveDate: r.pricingEffectiveDate,
+        nameOnMemorial: r.nameOnMemorial,
+        memorialSize: r.memorialSize,
+        memorialType: r.memorialType,
+        cemeteryName: r.cemeteryName,
+        section: r.section,
+        lot: r.lot,
+        space: r.space,
+        vaseInfo: r.vaseInfo,
+        approvedBy: r.approvedBy,
+        approvedAt: r.approvedAt,
+        lineItems: inv.lineItems || [{
+          description: r.packageNameSnapshot || r.packageType,
+          quantity: 1,
+          unitPrice: inv.amount ?? r.invoiceAmount,
+        }],
+        beforePhotoUrl: photoUrl('before'),
+        afterPhotoUrl: photoUrl('after'),
+      });
+      invoiceEmailSent = true;
+      console.log('[confirmInvoicePayment] Invoice email sent for invoice', inv.id);
+    } catch (e) {
+      console.error('[confirmInvoicePayment] Invoice email:', e.message);
+    }
+
     return res.json({
       message: 'Payment confirmed.',
+      invoiceEmailSent,
       invoice: result.invoice,
       payment: result.payment,
       workOrder: result.workOrder,

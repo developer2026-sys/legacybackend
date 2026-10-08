@@ -34,6 +34,7 @@ async function getPriceVisibility(req, ClientAccount) {
     attributes: [field],
   });
   const configured = account?.[field];
+  console.log('[price-visibility]', { clientAccountId: req.clientAccountId, field, configured, accountRole: req.accountRole });
 
   return {
     mode: PRICE_VISIBILITIES.has(configured) ? configured : 'none',

@@ -32,13 +32,9 @@ module.exports = (sequelize) => sequelize.define('PricingConfiguration', {
     type: DataTypes.STRING(255),
     allowNull: true,
   },
-  items: {
-    type: DataTypes.JSON,
+  item: {
+    type: DataTypes.STRING(255),
     allowNull: true,
-    get() {
-      const value = this.getDataValue('items');
-      return Array.isArray(value) ? value : [];
-    },
   },
   revenueShare: {
     type: DataTypes.DECIMAL(10, 2),

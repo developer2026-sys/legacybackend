@@ -125,20 +125,14 @@ module.exports = (sequelize) => {
       allowNull: true,
       field: 'package_id',
     },
-    packageNameSnapshot: {
-      type: DataTypes.STRING(255),
-      allowNull: true,
-      field: 'package_name_snapshot',
-    },
+    packageNameSnapshot: { type: DataTypes.STRING, field: 'package_name_snapshot' },
+    serviceSnapshot: { type: DataTypes.STRING(255), field: 'service_snapshot', allowNull: true },
+    itemSnapshot: { type: DataTypes.STRING(120), field: 'item_snapshot', allowNull: true },
     packagePrice: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
     },
-    restorationPrice: {
-      type: DataTypes.DECIMAL(10, 2),
-      allowNull: true,
-      field: 'restoration_price',
-    },
+    restorationPrice: { type: DataTypes.DECIMAL(10, 3), allowNull: false, field: 'restoration_price' },
     revenueShare: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true,

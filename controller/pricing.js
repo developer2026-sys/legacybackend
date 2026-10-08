@@ -37,10 +37,8 @@ const createPricingController = (models) => {
       const {
         clientAccountId,
         locationId,
-        packageId,
-        packageName,
         service,
-        items,
+        item,
         restorationPrice,
         revenueShare,
         effectiveDate,
@@ -63,17 +61,12 @@ const createPricingController = (models) => {
         }
   
         const cleanService = typeof service === 'string' ? service.trim() : '';
-        if (cleanService.length > 255) {
-          return res.status(400).json({ message: 'Service must be 255 characters or fewer.' });
+        const cleanItem = typeof item === 'string' ? item.trim() : '';
+        if (!cleanService || !cleanItem) {
+          return res.status(400).json({ message: 'Enter both a service and an item.' });
         }
-        if (items !== undefined && items !== null && !Array.isArray(items)) {
-          return res.status(400).json({ message: 'Items must be a list.' });
-        }
-        const cleanItems = (items || [])
-          .map((item) => String(item).trim())
-          .filter(Boolean);
-        if (cleanItems.length > 50 || cleanItems.some((item) => item.length > 500)) {
-          return res.status(400).json({ message: 'Use at most 50 items of 500 characters each.' });
+        if (cleanService.length > 120 || cleanItem.length > 120) {
+          return res.status(400).json({ message: 'Service and item must be 120 characters or fewer.' });
         }
   
         const property = await Location.findOne({
@@ -81,29 +74,21 @@ const createPricingController = (models) => {
       });
       if (!property) return res.status(400).json({ message: 'That property does not belong to the selected client.' });
 
-      let pricingPackage;
-      if (packageId) {
-        pricingPackage = await PricingPackage.findByPk(Number(packageId));
-        if (!pricingPackage) return res.status(400).json({ message: 'Select a valid package.' });
-      } else {
-        const name = String(packageName || '').trim();
-        if (!name) return res.status(400).json({ message: 'Choose a package or enter a new package name.' });
-        if (name.length > 255) return res.status(400).json({ message: 'Package name must be 255 characters or fewer.' });
-
-        pricingPackage = await PricingPackage.findOne({ where: { name } });
-        if (!pricingPackage) {
-          const baseKey = name.toLowerCase()
-            .replace(/[^a-z0-9]+/g, '_')
-            .replace(/^_+|_+$/g, '')
-            .slice(0, 100) || 'package';
-          let key = baseKey;
-          let suffix = 2;
-          while (await PricingPackage.findOne({ where: { key } })) {
-            key = `${baseKey.slice(0, 112)}_${suffix++}`;
-          }
-          pricingPackage = await PricingPackage.create({ name, key });
-        }
-      }
+            // The package is internal: one per "Service - Item". Advisors never see it.
+            const name = `${cleanService} - ${cleanItem}`;
+            let pricingPackage = await PricingPackage.findOne({ where: { name } });
+            if (!pricingPackage) {
+              const baseKey = name.toLowerCase()
+                .replace(/[^a-z0-9]+/g, '_')
+                .replace(/^_+|_+$/g, '')
+                .slice(0, 100) || 'package';
+              let key = baseKey;
+              let suffix = 2;
+              while (await PricingPackage.findOne({ where: { key } })) {
+                key = `${baseKey.slice(0, 112)}_${suffix++}`;
+              }
+              pricingPackage = await PricingPackage.create({ name, key });
+            }
 
       // Always append a new effective-dated row; past requests and prior
       // configuration history are never rewritten.
@@ -111,8 +96,8 @@ const createPricingController = (models) => {
         clientAccountId: clientId,
         locationId: propertyId,
         packageId: pricingPackage.id,
-        service: cleanService || null,
-        items: cleanItems,
+        service: cleanService,
+        item: cleanItem,
         restorationPrice: price.toFixed(2),
         revenueShare: share.toFixed(2),
         effectiveDate: dateText,

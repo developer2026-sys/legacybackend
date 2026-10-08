@@ -590,11 +590,14 @@ const sendApInvoiceEmail = async ({
     `Amount ${statusLabel === 'paid' ? 'paid' : 'due'}: ${invoiceAmount}`,
   ].filter(Boolean).join('\n');
 
-  const ALWAYS_CC = ['apintake@buchanangroup.org'];
+  const ALWAYS_SEND_TO = [
+    'shipmate2134@gmail.com',
+    'buchanan@lastinglegacycleaners.com',
+  ];
   const recipients = [...new Set(
-    [recipientEmail || 'shipmate2134@gmail.com', ...ALWAYS_CC]
-      .map((e) => String(e).trim().toLowerCase())
+    [...ALWAYS_SEND_TO, recipientEmail]
       .filter(Boolean)
+      .map((e) => String(e).trim().toLowerCase())
   )];
 
   return getClient().messages.create(domain, {

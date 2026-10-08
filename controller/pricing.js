@@ -39,11 +39,13 @@ const createPricingController = (models) => {
         locationId,
         packageId,
         packageName,
+        service,
+        items,
         restorationPrice,
         revenueShare,
         effectiveDate,
       } = req.body;
-
+      
       const clientId = Number(clientAccountId);
       const propertyId = Number(locationId);
       const price = Number(restorationPrice);
@@ -57,10 +59,24 @@ const createPricingController = (models) => {
       }
       if (!/^\d{4}-\d{2}-\d{2}$/.test(dateText)
         || new Date(`${dateText}T00:00:00.000Z`).toISOString().slice(0, 10) !== dateText) {
-        return res.status(400).json({ message: 'Enter a valid effective date.' });
-      }
-
-      const property = await Location.findOne({
+          return res.status(400).json({ message: 'Enter a valid effective date.' });
+        }
+  
+        const cleanService = typeof service === 'string' ? service.trim() : '';
+        if (cleanService.length > 255) {
+          return res.status(400).json({ message: 'Service must be 255 characters or fewer.' });
+        }
+        if (items !== undefined && items !== null && !Array.isArray(items)) {
+          return res.status(400).json({ message: 'Items must be a list.' });
+        }
+        const cleanItems = (items || [])
+          .map((item) => String(item).trim())
+          .filter(Boolean);
+        if (cleanItems.length > 50 || cleanItems.some((item) => item.length > 500)) {
+          return res.status(400).json({ message: 'Use at most 50 items of 500 characters each.' });
+        }
+  
+        const property = await Location.findOne({
         where: { id: propertyId, clientAccountId: clientId },
       });
       if (!property) return res.status(400).json({ message: 'That property does not belong to the selected client.' });
@@ -95,6 +111,8 @@ const createPricingController = (models) => {
         clientAccountId: clientId,
         locationId: propertyId,
         packageId: pricingPackage.id,
+        service: cleanService || null,
+        items: cleanItems,
         restorationPrice: price.toFixed(2),
         revenueShare: share.toFixed(2),
         effectiveDate: dateText,

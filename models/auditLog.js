@@ -34,8 +34,8 @@ module.exports = (sequelize) => {
       field: 'property_id',
     },
     requestId: {
-      type: DataTypes.INTEGER.UNSIGNED,
-      allowNull: false,
+      type: DataTypes.INTEGER,
+      allowNull: true,
       field: 'request_id',
     },
     action: {

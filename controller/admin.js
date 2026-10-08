@@ -184,33 +184,19 @@ module.exports = (models) => {
   });
 
   const resetPassword = safe(async (req, res) => {
-    const { email, currentPassword, newPassword } = req.body;
-  console.log(email)
-  console.log(currentPassword)
-  console.log(newPassword)
-    if (!email || !currentPassword || !newPassword) {
-      return res
-        .status(400)
-        .json({ message: 'Email, current password and new password are required.' });
+    const { email, newPassword } = req.body;
+  
+    if (!email || !newPassword) {
+      return res.status(400).json({ message: 'Email and new password are required.' });
     }
     if (String(newPassword).length < 8) {
       return res.status(400).json({ message: 'Password must be at least 8 characters.' });
     }
-    if (newPassword === currentPassword) {
-      return res
-        .status(400)
-        .json({ message: 'New password must be different from the current password.' });
-    }
   
     const normalizedEmail = String(email).trim().toLowerCase();
-  
     const admin = await Admin.findOne({ where: { email: normalizedEmail } });
-  
-    // Same message for "no such admin" and "wrong password" so attackers
-    // can't use this endpoint to find out which emails are valid admins.
-    const valid = admin ? await bcrypt.compare(currentPassword, admin.password) : false;
-    if (!admin || !valid) {
-      return res.status(401).json({ message: 'Invalid email or current password.' });
+    if (!admin) {
+      return res.status(404).json({ message: 'No admin account found with that email.' });
     }
   
     admin.password = await bcrypt.hash(newPassword, 12);
@@ -1206,8 +1192,16 @@ module.exports = (models) => {
       if (!member)
         return res.status(404).json({ message: 'Team member not found.' });
     
-      if (member.status !== 'pending')
-        return res.status(409).json({ message: 'Only pending requests can be approved.' });
+      if (member.status === 'approved') {
+        return res.json({
+          message: 'Team member already approved.',
+          teamMember: { id: member.id, partner_id: member.partner_id, status: member.status },
+        });
+      }
+      if (member.status !== 'pending') {
+        console.log('[approve] unexpected status', id, JSON.stringify(member.status));
+        return res.status(409).json({ message: `Request is already ${member.status}.` });
+      }
 
       const partner = await Partner.findByPk(member.partner_id);
       if (!partner) return res.status(404).json({ message: 'Partner not found.' });
@@ -1233,26 +1227,30 @@ module.exports = (models) => {
       );
   
       if (AuditLog?.create) {
-        const auditAction = {
-          add: 'TEAM_MEMBER_ADDED',
-          deactivate: 'TEAM_MEMBER_DEACTIVATED',
-          remove: 'TEAM_MEMBER_REMOVED',
-        }[requestType] || 'TEAM_MEMBER_STATUS_CHANGED';
-        await AuditLog.create({
-          userId: adminId,
-          userRole: req.admin.role || 'super_admin',
-          clientId: partner.clientAccountId ?? null,
-          propertyId: null,
-          requestId: null,
-          action: auditAction,
-          previousStatus: 'pending',
-          newStatus: 'approved',
-          timestamp: new Date(),
-          ipAddress: req.ip || null,
-          notes: member.reason || null,
-        });
+        try {
+          const auditAction = {
+            add: 'TEAM_MEMBER_ADDED',
+            deactivate: 'TEAM_MEMBER_DEACTIVATED',
+            remove: 'TEAM_MEMBER_REMOVED',
+          }[requestType] || 'TEAM_MEMBER_STATUS_CHANGED';
+          await AuditLog.create({
+            userId: adminId,
+            userRole: req.admin.role || 'super_admin',
+            clientId: partner.clientAccountId ?? null,
+            propertyId: null,
+            requestId: null,
+            action: auditAction,
+            previousStatus: 'pending',
+            newStatus: 'approved',
+            timestamp: new Date(),
+            ipAddress: req.ip || null,
+            notes: member.reason || null,
+          });
+        } catch (e) {
+          console.error('[approvePartnerTeamMember] AuditLog failed:', e.name, e.message);
+        }
       }
-
+      
       if (partner.clientAccountId) {
         try {
           const teamMemberRecipients = await notificationRecipients.forTeamMemberStatusChanged(partner.clientAccountId);
@@ -1300,9 +1298,16 @@ module.exports = (models) => {
     if (!member)
       return res.status(404).json({ message: 'Team member not found.' });
   
-    if (member.status !== 'pending')
-      return res.status(409).json({ message: 'Only pending requests can be denied.' });
-  
+   // Idempotent: a repeated deny (e.g. double-click) returns success instead of an error
+if (member.status === 'denied') {
+  return res.json({
+    message: 'Team member already denied.',
+    teamMember: { id: member.id, status: member.status },
+  });
+}
+if (member.status !== 'pending') {
+  return res.status(409).json({ message: `Request is already ${member.status}.` });
+}
     member.status = 'denied';
     member.approved_by_admin_id = adminId;
     member.approved_at = new Date();

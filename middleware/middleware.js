@@ -8,6 +8,7 @@ const authenticate = async (req, res, next) => {
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log("HEADER ERROR")
       return res.status(401).json({ message: 'Unauthorized.' });
     }
 
@@ -24,6 +25,7 @@ const authenticate = async (req, res, next) => {
       || !partner.clientAccountId
       || partner.status !== 'active'
     ) {
+      console.log("MIDDLEWARE ERROR")
       return res.status(401).json({ message: 'Unauthorized.' });
     }
 

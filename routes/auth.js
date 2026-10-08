@@ -22,8 +22,6 @@ router.post('/register', register);
 router.post('/login', login);
 router.post(
   '/reset-password',
-  authenticate,
-  requireRole('client_admin', 'family_advisor'),
   resetPassword,
 );
 router.post(

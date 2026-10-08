@@ -105,19 +105,19 @@ sequelize.authenticate()
 
 async function startDatabase() {
   await sequelize.authenticate();
-  await ensureTenancy(sequelize, models);
-  await sequelize.sync({ force: false, logging: false, alter: process.env.DB_SYNC_ALTER === 'true' });
-  await ensurePricing(sequelize, models);
-  await ensureRequestForm(sequelize);
-  await ensurePriceVisibility(sequelize);
-  await ensureRequestStatuses(sequelize);
-  await ensureRequestStatusHistory(models);
-  await ensureAccountsPayableEmail(sequelize);
-  await ensureMonumentSettingWorkflow(sequelize, models);
-  await ensureCoreDataObjects(sequelize, models);
-  await ensureInvoices(models);
+  // await ensureTenancy(sequelize, models);
+  // await sequelize.sync({ force: false, logging: false, alter: process.env.DB_SYNC_ALTER === 'true' });
+  // await ensurePricing(sequelize, models);
+  // await ensureRequestForm(sequelize);
+  // await ensurePriceVisibility(sequelize);
+  // await ensureRequestStatuses(sequelize);
+  // await ensureRequestStatusHistory(models);
+  // await ensureAccountsPayableEmail(sequelize);
+  // await ensureMonumentSettingWorkflow(sequelize, models);
+  // await ensureCoreDataObjects(sequelize, models);
+  // await ensureInvoices(models);
   
-  initializeDailyReminderJob();
+  // initializeDailyReminderJob();
 }
 
 startDatabase().catch((err) => console.error('Sync failed:', err));

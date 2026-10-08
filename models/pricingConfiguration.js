@@ -28,6 +28,18 @@ module.exports = (sequelize) => sequelize.define('PricingConfiguration', {
     allowNull: false,
     field: 'restoration_price',
   },
+  service: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
+  items: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    get() {
+      const value = this.getDataValue('items');
+      return Array.isArray(value) ? value : [];
+    },
+  },
   revenueShare: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false,

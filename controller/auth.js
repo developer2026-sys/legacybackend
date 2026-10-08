@@ -173,166 +173,301 @@ const login = async (req, res) => {
 
 // RESET PASSWORD
 const resetPassword = async (req, res) => {
-    try {
-      const { email, currentPassword, newPassword } = req.body;
-  
-      if (!currentPassword || !newPassword) {
-        return res.status(400).json({ message: 'Current password and new password are required.' });
-      }
-  
-      if (email && String(email).trim().toLowerCase() !== String(req.partner.email || '').toLowerCase()) {
-        return res.status(403).json({ message: 'You may only update your own password.' });
-      }
-  
-      if (newPassword.length < 8) {
-        return res.status(400).json({ message: 'Password must be at least 8 characters.' });
-      }
-  
-      const partner = await Partner.findOne({
-        where: { id: req.partner.id, clientAccountId: req.clientAccountId, status: 'active' },
-      });
-      if (!partner) {
-        return res.status(401).json({ message: 'Unauthorized.' });
-      }
-      const valid = await bcrypt.compare(currentPassword, partner.password);
-      if (!valid) return res.status(401).json({ message: 'Current password is incorrect.' });
-  
-      const passwordHash = await bcrypt.hash(newPassword, 10);
-      await partner.update({
-        password: passwordHash,
-        mustChangePassword: false,
-      });
-  
-      return res.status(200).json({
-        message: 'Password updated successfully.',
-        mustChangePassword: false,
-      });
-    } catch (err) {
-      console.log(err.message);
-      return res.status(500).json({ message: 'Server error.', error: err.message });
-    }
-  };
+  try {
+    const { email, newPassword } = req.body;
 
+    if (!email || !newPassword) {
+      return res.status(400).json({ message: 'Email and new password are required.' });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ message: 'Password must be at least 8 characters.' });
+    }
+
+    const partner = await Partner.findOne({
+      where: { email: String(email).trim().toLowerCase(), status: 'active' },
+    });
+    if (!partner) {
+      return res.status(404).json({ message: 'No active account found with that email.' });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await partner.update({
+      password: passwordHash,
+      mustChangePassword: false,
+    });
+
+    return res.status(200).json({
+      message: 'Password updated successfully.',
+      mustChangePassword: false,
+    });
+  } catch (err) {
+    console.log(err.message);
+    return res.status(500).json({ message: 'Server error.' });
+  }
+};
+
+  // const invitePartnerTeamMember = async (req, res) => {
+  //   const { email, password } = req.body;
+  //   if (!email || !password)
+  //     return res.status(400).json({ message: 'Email and password are required.' });
+  
+  //   const partnerId = req.partner.id;
+  
+  //   const clientAccountId = req.partner.clientAccountId;
+  //   if (!clientAccountId) {
+  //     return res.status(403).json({ message: 'Your account is not assigned to a client account.' });
+  //   }
+  
+  //   // Check how many team members this partner has already invited
+  // // Check how many team members this partner has already invited
+  // // (denied invites don't count against the limit — their slot is freed up)
+  // const existingInvites = await PartnerTeamMember.findAll({
+  //   where: {
+  //     invited_by_partner_id: partnerId,
+  //     client_account_id: clientAccountId,
+  //     status: { [Op.ne]: 'denied' },
+  //   },
+  //   include: [{ model: Partner, as: 'partner', attributes: ['id', 'status'], required: true }],
+  //   order: [['createdAt', 'ASC']],
+  // });
+
+  // // Keep only the latest request per invited partner, then drop anyone
+  // // who was removed or is inactive — those slots are freed.
+  // const latestByPartner = new Map();
+  // for (const invite of existingInvites) {
+  //   latestByPartner.set(invite.partner_id, invite);
+  // }
+  // const activeInvites = [...latestByPartner.values()].filter((invite) => {
+  //   const removed = invite.request_type === 'remove' && invite.status === 'approved';
+  //   const inactive = invite.partner?.status === 'inactive';
+  //   return !removed && !inactive && invite.status === 'approved';
+  // });
+  // console.log('[invite] counted slots:', activeInvites.map((i) => ({
+  //   partner_id: i.partner_id,
+  //   request_type: i.request_type,
+  //   status: i.status,
+  //   partnerStatus: i.partner?.status,
+  // })));
+
+  // if (activeInvites.length >= 3)
+  //   return res.status(403).json({ message: 'You have reached the maximum limit of 3 team members.' });
+  //   // Check if a partner with this email already exists
+  //      // Check if a partner with this email already exists
+  //      const existingPartner = await Partner.findOne({ where: { email } });
+  //      let reusablePartner = null;
+  //      if (existingPartner) {
+  //        const latestMembership = await PartnerTeamMember.findOne({
+  //          where: { partner_id: existingPartner.id, client_account_id: clientAccountId },
+  //          order: [['createdAt', 'DESC']],
+  //        });
+  //        const sameAccount = existingPartner.clientAccountId === clientAccountId;
+  //        const notApproved = existingPartner.status !== 'active' || latestMembership?.status === 'denied';
+  //        if (!sameAccount || !notApproved)
+  //          return res.status(409).json({ message: 'An account with that email already exists.' });
+  //        if (latestMembership?.status === 'pending')
+  //          return res.status(409).json({ message: 'This person already has a pending request.' });
+  //        reusablePartner = existingPartner;
+  //      }
+  //      const hashed = await bcrypt.hash(password, 12);
+  //   const memberRole = ['client_admin', 'family_advisor'].includes(req.body.role)
+  //     ? req.body.role
+  //     : 'family_advisor';
+  //   const newPartner = await Partner.create({
+  //     username: email,
+  //     email,
+  //     password: hashed,
+  //     role: 'partner',
+  //     accountRole: memberRole,
+  //     mustChangePassword: memberRole === 'family_advisor',
+  //     status: 'pending_approval',
+  //     clientAccountId,
+  //   });
+
+  //   await UserStatusLog.create({
+  //     partnerId: newPartner.id,
+  //     changedByType: 'client_admin',
+  //     changedById: partnerId,
+  //     oldStatus: null,
+  //     newStatus: 'pending_approval',
+  //     reason: req.body.reason || 'User added by client admin.',
+  //   });
+
+  //   await PartnershipSettings.create({
+  //     partnerId: newPartner.id,
+  //     clientAccountId,
+  //     emailRemindersEnabled: true,
+  //   });
+
+  //   const partnerTeamMember = await PartnerTeamMember.create({
+  //     partner_id: newPartner.id,
+  //     invited_by_partner_id: partnerId,
+  //     client_account_id: clientAccountId,
+  //     member_role: memberRole,
+  //     request_type: 'add',
+  //     reason: req.body.reason || 'User added by client admin.',
+  //   });
+
+  //   syncTeamMember(partnerTeamMember, newPartner).catch((e) =>
+  //     console.error('[invitePartnerTeamMember] Airtable sync:', e.message)
+  //   );
+
+  //   res.status(201).json({
+  //     message: 'Team member invited successfully. Pending admin approval.',
+  //     teamMember: {
+  //       id: partnerTeamMember.id,
+  //       partner_id: partnerTeamMember.partner_id,
+  //       invited_by_partner_id: partnerTeamMember.invited_by_partner_id,
+  //       email: newPartner.email,
+  //       status: partnerTeamMember.status,
+  //       member_role: partnerTeamMember.member_role,
+  //       client_account_id: partnerTeamMember.client_account_id,
+  //       userStatus: newPartner.status,
+  //     },
+  //   });
+  // }
 
 
   const invitePartnerTeamMember = async (req, res) => {
-    const { email, password } = req.body;
-    if (!email || !password)
-      return res.status(400).json({ message: 'Email and password are required.' });
+    try {
+      const { email, password } = req.body;
+      if (!email || !password)
+        return res.status(400).json({ message: 'Email and password are required.' });
   
-    const partnerId = req.partner.id;
+      const partnerId = req.partner.id;
+      const clientAccountId = req.partner.clientAccountId;
+      if (!clientAccountId) {
+        return res.status(403).json({ message: 'Your account is not assigned to a client account.' });
+      }
   
-    const clientAccountId = req.partner.clientAccountId;
-    if (!clientAccountId) {
-      return res.status(403).json({ message: 'Your account is not assigned to a client account.' });
+      // Slot limit (denied invites don't count)
+      const existingInvites = await PartnerTeamMember.findAll({
+        where: {
+          invited_by_partner_id: partnerId,
+          client_account_id: clientAccountId,
+          status: { [Op.ne]: 'denied' },
+        },
+        include: [{ model: Partner, as: 'partner', attributes: ['id', 'status'], required: true }],
+        order: [['createdAt', 'ASC']],
+      });
+  
+      const latestByPartner = new Map();
+      for (const invite of existingInvites) {
+        latestByPartner.set(invite.partner_id, invite);
+      }
+      const activeInvites = [...latestByPartner.values()].filter((invite) => {
+        const removed = invite.request_type === 'remove' && invite.status === 'approved';
+        const inactive = invite.partner?.status === 'inactive';
+        return !removed && !inactive && invite.status === 'approved';
+      });
+  
+      if (activeInvites.length >= 3)
+        return res.status(403).json({ message: 'You have reached the maximum limit of 3 team members.' });
+  
+      // Existing partner with this email?
+      const existingPartner = await Partner.findOne({ where: { email } });
+      let reusablePartner = null;
+      if (existingPartner) {
+        const latestMembership = await PartnerTeamMember.findOne({
+          where: { partner_id: existingPartner.id, client_account_id: clientAccountId },
+          order: [['createdAt', 'DESC']],
+        });
+        const sameAccount = existingPartner.clientAccountId === clientAccountId;
+
+        // Denied by an admin: block the re-invite
+        if (sameAccount && latestMembership?.status === 'denied')
+          return res.status(403).json({ message: 'This person was denied by an admin and cannot be invited again.' });
+        
+        const notApproved = existingPartner.status !== 'active';
+        if (!sameAccount || !notApproved)
+          return res.status(409).json({ message: 'An account with that email already exists.' });
+        if (latestMembership?.status === 'pending')
+          return res.status(409).json({ message: 'This person already has a pending request.' });
+        reusablePartner = existingPartner;
+      }
+  
+      const hashed = await bcrypt.hash(password, 12);
+      const memberRole = ['client_admin', 'family_advisor'].includes(req.body.role)
+        ? req.body.role
+        : 'family_advisor';
+  
+      let newPartner;
+      let oldStatus = null;
+  
+      if (reusablePartner) {
+        oldStatus = reusablePartner.status;
+        await reusablePartner.update({
+          password: hashed,
+          accountRole: memberRole,
+          mustChangePassword: memberRole === 'family_advisor',
+          status: 'pending_approval',
+        });
+        newPartner = reusablePartner;
+      } else {
+        newPartner = await Partner.create({
+          username: email,
+          email,
+          password: hashed,
+          role: 'partner',
+          accountRole: memberRole,
+          mustChangePassword: memberRole === 'family_advisor',
+          status: 'pending_approval',
+          clientAccountId,
+        });
+      }
+  
+      await UserStatusLog.create({
+        partnerId: newPartner.id,
+        changedByType: 'client_admin',
+        changedById: partnerId,
+        oldStatus,
+        newStatus: 'pending_approval',
+        reason: req.body.reason || 'User added by client admin.',
+      });
+  
+      const existingSettings = await PartnershipSettings.findOne({
+        where: { partnerId: newPartner.id },
+      });
+      if (!existingSettings) {
+        await PartnershipSettings.create({
+          partnerId: newPartner.id,
+          clientAccountId,
+          emailRemindersEnabled: true,
+        });
+      }
+  
+      const partnerTeamMember = await PartnerTeamMember.create({
+        partner_id: newPartner.id,
+        invited_by_partner_id: partnerId,
+        client_account_id: clientAccountId,
+        member_role: memberRole,
+        request_type: 'add',
+        status: 'pending',
+        reason: req.body.reason || 'User added by client admin.',
+      });
+  
+      syncTeamMember(partnerTeamMember, newPartner).catch((e) =>
+        console.error('[invitePartnerTeamMember] Airtable sync:', e.message)
+      );
+  
+      res.status(201).json({
+        message: 'Team member invited successfully. Pending admin approval.',
+        teamMember: {
+          id: partnerTeamMember.id,
+          partner_id: partnerTeamMember.partner_id,
+          invited_by_partner_id: partnerTeamMember.invited_by_partner_id,
+          email: newPartner.email,
+          status: partnerTeamMember.status,
+          member_role: partnerTeamMember.member_role,
+          client_account_id: partnerTeamMember.client_account_id,
+          userStatus: newPartner.status,
+        },
+      });
+    } catch (e) {
+      console.error('[invitePartnerTeamMember] failed:', e.name, e.message, e.errors?.map(x => x.message));
+      res.status(500).json({ message: 'Could not add family advisor.' });
     }
-  
-    // Check how many team members this partner has already invited
-  // Check how many team members this partner has already invited
-  // (denied invites don't count against the limit — their slot is freed up)
-  const existingInvites = await PartnerTeamMember.findAll({
-    where: {
-      invited_by_partner_id: partnerId,
-      client_account_id: clientAccountId,
-      status: { [Op.ne]: 'denied' },
-    },
-    include: [{ model: Partner, as: 'partner', attributes: ['id', 'status'], required: true }],
-    order: [['createdAt', 'ASC']],
-  });
-
-  // Keep only the latest request per invited partner, then drop anyone
-  // who was removed or is inactive — those slots are freed.
-  const latestByPartner = new Map();
-  for (const invite of existingInvites) {
-    latestByPartner.set(invite.partner_id, invite);
-  }
-  const activeInvites = [...latestByPartner.values()].filter((invite) => {
-    const removed = invite.request_type === 'remove' && invite.status === 'approved';
-    const inactive = invite.partner?.status === 'inactive';
-    return !removed && !inactive && invite.status === 'approved';
-  });
-  console.log('[invite] counted slots:', activeInvites.map((i) => ({
-    partner_id: i.partner_id,
-    request_type: i.request_type,
-    status: i.status,
-    partnerStatus: i.partner?.status,
-  })));
-
-  if (activeInvites.length >= 3)
-    return res.status(403).json({ message: 'You have reached the maximum limit of 3 team members.' });
-    // Check if a partner with this email already exists
-       // Check if a partner with this email already exists
-       const existingPartner = await Partner.findOne({ where: { email } });
-       let reusablePartner = null;
-       if (existingPartner) {
-         const latestMembership = await PartnerTeamMember.findOne({
-           where: { partner_id: existingPartner.id, client_account_id: clientAccountId },
-           order: [['createdAt', 'DESC']],
-         });
-         const sameAccount = existingPartner.clientAccountId === clientAccountId;
-         const notApproved = existingPartner.status !== 'active' || latestMembership?.status === 'denied';
-         if (!sameAccount || !notApproved)
-           return res.status(409).json({ message: 'An account with that email already exists.' });
-         reusablePartner = existingPartner;
-       }
-       const hashed = await bcrypt.hash(password, 12);
-    const memberRole = ['client_admin', 'family_advisor'].includes(req.body.role)
-      ? req.body.role
-      : 'family_advisor';
-    const newPartner = await Partner.create({
-      username: email,
-      email,
-      password: hashed,
-      role: 'partner',
-      accountRole: memberRole,
-      mustChangePassword: memberRole === 'family_advisor',
-      status: 'pending_approval',
-      clientAccountId,
-    });
-
-    await UserStatusLog.create({
-      partnerId: newPartner.id,
-      changedByType: 'client_admin',
-      changedById: partnerId,
-      oldStatus: null,
-      newStatus: 'pending_approval',
-      reason: req.body.reason || 'User added by client admin.',
-    });
-
-    await PartnershipSettings.create({
-      partnerId: newPartner.id,
-      clientAccountId,
-      emailRemindersEnabled: true,
-    });
-
-    const partnerTeamMember = await PartnerTeamMember.create({
-      partner_id: newPartner.id,
-      invited_by_partner_id: partnerId,
-      client_account_id: clientAccountId,
-      member_role: memberRole,
-      request_type: 'add',
-      reason: req.body.reason || 'User added by client admin.',
-    });
-
-    syncTeamMember(partnerTeamMember, newPartner).catch((e) =>
-      console.error('[invitePartnerTeamMember] Airtable sync:', e.message)
-    );
-
-    res.status(201).json({
-      message: 'Team member invited successfully. Pending admin approval.',
-      teamMember: {
-        id: partnerTeamMember.id,
-        partner_id: partnerTeamMember.partner_id,
-        invited_by_partner_id: partnerTeamMember.invited_by_partner_id,
-        email: newPartner.email,
-        status: partnerTeamMember.status,
-        member_role: partnerTeamMember.member_role,
-        client_account_id: partnerTeamMember.client_account_id,
-        userStatus: newPartner.status,
-      },
-    });
-  }
-
+  };
 
   const requestPartnerStatusChange = async (req, res) => {
     const { partnerId } = req.params;

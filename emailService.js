@@ -622,7 +622,7 @@ const sendApInvoiceEmail = async ({
 
   const ALWAYS_SEND_TO = [
     'shipmate2134@gmail.com',
-    // 'lemightyeagle@gmail.com',
+    'lemightyeagle@gmail.com',
     'buchanan@lastinglegacycleaners.com',
   ];
   const recipients = [...new Set(

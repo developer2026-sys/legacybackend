@@ -453,8 +453,12 @@ const sendApInvoiceEmail = async ({
     ['Approved At', approvedAt ? formatDate(approvedAt) : ''],
     ['Created', formatDate(createdAt)],
     ['Due Date', dueDate ? formatDate(dueDate) : ''],
-    ['Paid At', paidAt ? formatDate(paidAt) : ''],
-    ['Payment Method', paymentMethod],
+    ...(statusLabel === 'paid'
+      ? [
+          ['Paid At', paidAt ? formatDate(paidAt) : ''],
+          ['Payment Method', paymentMethod],
+        ]
+      : []),
   ];
   const requestDetailsGrid = requestDetails.map(([label, value]) => field(label, value)).join('');
 

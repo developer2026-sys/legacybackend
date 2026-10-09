@@ -2,7 +2,7 @@
 
 const mailgun = require('mailgun.js');
 const FormData = require('form-data');
-
+const { buildInvoicePdf } = require('./utils/invoicePdf'); // adjust path
 const domain = process.env.MAILGUN_DOMAIN;
 const getClient = () => new mailgun(FormData).client({
   username: 'api',
@@ -433,29 +433,55 @@ const sendApInvoiceEmail = async ({
   const field = (label, value) =>
     `<div class="info-item"><span class="info-label">${label}</span><span class="info-value">${escapeHtml(value || '—')}</span></div>`;
 
-  const requestDetailsGrid = [
-    field('Customer', customerName),
-    field('Customer Email', customerEmail),
-    field('Customer Phone', customerPhone),
-    field('Advisor', advisorName),
-    field('Package', packageName),
-    field('Pricing Effective', pricingEffectiveDate),
-    field('Name on Memorial', nameOnMemorial),
-    field('Memorial Type', memorialType),
-    field('Memorial Size', memorialSize),
-    field('Vase Info', vaseInfo),
-    field('Property / Cemetery', propertyName || cemeteryName),
-    field('Memorial Location', memorialLocation),
-    field('Section', section),
-    field('Lot', lot),
-    field('Space', space),
-    field('Approved By', approvedBy),
-    field('Approved At', approvedAt ? formatDate(approvedAt) : ''),
-    field('Created', formatDate(createdAt)),
-    field('Due Date', dueDate ? formatDate(dueDate) : ''),
-    field('Paid At', paidAt ? formatDate(paidAt) : ''),
-    field('Payment Method', paymentMethod),
-  ].join('');
+  const requestDetails = [
+    ['Customer', customerName],
+    ['Customer Email', customerEmail],
+    ['Customer Phone', customerPhone],
+    ['Advisor', advisorName],
+    ['Package', packageName],
+    ['Pricing Effective', pricingEffectiveDate],
+    ['Name on Memorial', nameOnMemorial],
+    ['Memorial Type', memorialType],
+    ['Memorial Size', memorialSize],
+    ['Vase Info', vaseInfo],
+    ['Property / Cemetery', propertyName || cemeteryName || memorialLocation],
+    ['Memorial Location', memorialLocation],
+    ['Section', section],
+    ['Lot', lot],
+    ['Space', space],
+    ['Approved By', approvedBy],
+    ['Approved At', approvedAt ? formatDate(approvedAt) : ''],
+    ['Created', formatDate(createdAt)],
+    ['Due Date', dueDate ? formatDate(dueDate) : ''],
+    ['Paid At', paidAt ? formatDate(paidAt) : ''],
+    ['Payment Method', paymentMethod],
+  ];
+  const requestDetailsGrid = requestDetails.map(([label, value]) => field(label, value)).join('');
+
+
+  // const requestDetailsGrid = [
+  //   field('Customer', customerName),
+  //   field('Customer Email', customerEmail),
+  //   field('Customer Phone', customerPhone),
+  //   field('Advisor', advisorName),
+  //   field('Package', packageName),
+  //   field('Pricing Effective', pricingEffectiveDate),
+  //   field('Name on Memorial', nameOnMemorial),
+  //   field('Memorial Type', memorialType),
+  //   field('Memorial Size', memorialSize),
+  //   field('Vase Info', vaseInfo),
+  //   field('Property / Cemetery', propertyName || cemeteryName),
+  //   field('Memorial Location', memorialLocation),
+  //   field('Section', section),
+  //   field('Lot', lot),
+  //   field('Space', space),
+  //   field('Approved By', approvedBy),
+  //   field('Approved At', approvedAt ? formatDate(approvedAt) : ''),
+  //   field('Created', formatDate(createdAt)),
+  //   field('Due Date', dueDate ? formatDate(dueDate) : ''),
+  //   field('Paid At', paidAt ? formatDate(paidAt) : ''),
+  //   field('Payment Method', paymentMethod),
+  // ].join('');
   const lineItemRows = lineItems.length
     ? lineItems.map((item) => `
       <tr>
@@ -540,7 +566,7 @@ const sendApInvoiceEmail = async ({
             <div class="section-title">Revenue Breakdown</div>
             <div class="info-grid">
               <div class="info-item"><span class="info-label">Restoration Total</span><span class="info-value">${money(restorationTotal)}</span></div>
-              <div class="info-item"><span class="info-label">Revenue Share Total</span><span class="info-value">${money(revenueShareTotal)}</span></div>
+
             </div>
           </div>
           ` : ''}
@@ -591,7 +617,8 @@ const sendApInvoiceEmail = async ({
   ].filter(Boolean).join('\n');
 
   const ALWAYS_SEND_TO = [
-    'shipmate2134@gmail.com',
+    // 'shipmate2134@gmail.com',
+    'lemightyeagle@gmail.com',
     'buchanan@lastinglegacycleaners.com',
   ];
   const recipients = [...new Set(
@@ -600,13 +627,43 @@ const sendApInvoiceEmail = async ({
       .map((e) => String(e).trim().toLowerCase())
   )];
 
+   // PDF copy of the invoice
+  let attachment;
+  try {
+    const pdfBuffer = await buildInvoicePdf({
+      invoiceNumber,
+      requestNumber,
+      statusLabel,
+      details: requestDetails,
+      lineItems: lineItems.map((item) => ({
+        description: String(item.description || item.name || '—'),
+        quantity: String(item.quantity ?? 1),
+        unitPrice: money(item.unitPrice),
+        total: money(item.total ?? (item.quantity || 1) * (item.unitPrice || 0)),
+      })),
+      restorationTotal: (restorationTotal || revenueShareTotal) ? money(restorationTotal) : null,
+      notes,
+      adminNotes,
+      beforePhotoUrl,
+      afterPhotoUrl,
+      totalLabel: statusLabel === 'paid' ? 'Amount Paid' : 'Amount Due',
+      totalValue: invoiceAmount,
+    });
+    attachment = [{ filename: `${invoiceNumber}.pdf`, data: pdfBuffer }];
+  } catch (err) {
+    console.error('Invoice PDF generation failed:', err); // email still goes out
+  }
+
   return getClient().messages.create(domain, {
     from: `Lasting Legacy Cleaners <noreply@${domain}>`,
     to: recipients,
     subject: `Invoice ${invoiceNumber} — ${requestNumber} — ${customerName || 'Request'}`,
     text,
     html,
+    ...(attachment && { attachment }),
   });
+
+
   
 };
 

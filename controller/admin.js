@@ -601,7 +601,10 @@ module.exports = (models) => {
         ? await Partner.findByPk(r.submittedByUserId)
         : null;
 
-      const photos = typeof r.getPhotos === 'function' ? await r.getPhotos() : [];
+        const photos = typeof r.getPhotos === 'function' ? await r.getPhotos() : [];
+        const location = r.locationId && typeof r.getLocation === 'function'
+          ? await r.getLocation()
+          : null;
       const photoUrl = (type) => {
         const p = photos.find((x) => x.attachmentType === type);
         return p ? p.storagePath : undefined; // convert to public URL if needed
@@ -614,7 +617,7 @@ module.exports = (models) => {
         customerName: r.customerName,
         customerEmail: r.customerEmail,
         customerPhone: r.customerPhone,
-        propertyName: r.cemeteryName,
+        propertyName: r.cemeteryName || location?.name || r.memorialLocation,
         memorialLocation: r.memorialLocation,
         advisorName: advisor?.contactName || advisor?.username,
         amount: inv.amount ?? r.invoiceAmount,

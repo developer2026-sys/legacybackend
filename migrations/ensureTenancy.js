@@ -115,6 +115,7 @@ async function ensureTenancy(sequelize, models) {
 
   // Backfill legacy partner records into separate client accounts. This is
   // intentionally conservative: no existing partner data is merged.
+  await Partner.sync(); // creates "partners" if missing
   const partners = await Partner.findAll();
   for (const partner of partners) {
     let account = partner.clientAccountId

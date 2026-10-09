@@ -1,4 +1,4 @@
-const PDFDocument = require('pdfkit');
+const PDFDocument = require('pdfkit/js/pdfkit.standalone');
 
 const C = { navy: '#1e3c72', gray: '#666666', border: '#e0e0e0', light: '#f9f9f9', head: '#f0f0f0' };
 const LOGO_URL = 'https://res.cloudinary.com/dbjwbveqn/image/upload/v1791377127/cleanerlogo_xyy6im.jpg';

@@ -1031,26 +1031,56 @@ module.exports = (models) => {
                 ? await Partner.findByPk(request.partnerId)
                 : null);
 
-            const invoiceNotifications = await notificationService.sendNotifications({
-              type: NOTIFICATION_EVENTS.INVOICE_CREATED,
-              payload: {
-                invoiceId: invoice.id,
-                requestNumber: request.requestNumber || `#${request.id}`,
-                status: invoice.paymentStatus || 'PENDING',
-                customerName: request.customerName,
-                customerEmail: request.customerEmail,
-                customerPhone: request.customerPhone,
-                propertyName: request.location?.name || request.memorialLocation,
-                memorialLocation: request.memorialLocation,
-                advisorName: advisor?.contactName || advisor?.username || advisor?.email,
-                packageName: request.packageNameSnapshot || request.package?.name || request.packageType,
-                amount: invoice.amount,
-                createdAt: invoice.issuedAt || invoice.createdAt,
-                notes: request.notes,
-                restorationTotal: request.restorationPrice,
-                revenueShareTotal: request.revenueShare,
-              },
-            }, invoiceRecipients);
+    // Load photos and location the same way confirmInvoicePayment does
+const photos = typeof request.getPhotos === 'function' ? await request.getPhotos() : [];
+const location = request.locationId && typeof request.getLocation === 'function'
+  ? await request.getLocation()
+  : null;
+const photoUrl = (type) => {
+  const p = photos.find((x) => x.attachmentType === type);
+  return p ? p.storagePath : undefined;
+};
+
+const invoiceNotifications = await notificationService.sendNotifications({
+  type: NOTIFICATION_EVENTS.INVOICE_CREATED,
+  payload: {
+    invoiceId: invoice.id,
+    requestNumber: request.requestNumber || `#${request.id}`,
+    status: invoice.paymentStatus || 'PENDING',
+    customerName: request.customerName,
+    customerEmail: request.customerEmail,
+    customerPhone: request.customerPhone,
+    propertyName: request.cemeteryName || location?.name || request.memorialLocation,
+    memorialLocation: request.memorialLocation,
+    advisorName: advisor?.contactName || advisor?.username || advisor?.email,
+    packageName: request.packageNameSnapshot || request.package?.name || request.packageType,
+    amount: invoice.amount ?? request.invoiceAmount,
+    createdAt: invoice.issuedAt || invoice.createdAt,
+    dueDate: invoice.dueDate,
+    notes: request.notes,
+    adminNotes: request.adminNotes,
+    restorationTotal: request.restorationPrice,
+    revenueShareTotal: request.revenueShare,
+    pricingEffectiveDate: request.pricingEffectiveDate,
+    nameOnMemorial: request.nameOnMemorial,
+    memorialSize: request.memorialSize,
+    memorialType: request.memorialType,
+    cemeteryName: request.cemeteryName,
+    section: request.section,
+    lot: request.lot,
+    space: request.space,
+    vaseInfo: request.vaseInfo,
+    approvedBy: request.approvedBy,
+    approvedAt: request.approvedAt,
+    lineItems: invoice.lineItems || [{
+      description: request.packageNameSnapshot || request.packageType,
+      quantity: 1,
+      unitPrice: invoice.amount ?? request.invoiceAmount,
+    }],
+    beforePhotoUrl: photoUrl('before'),
+    afterPhotoUrl: photoUrl('after'),
+  },
+}, invoiceRecipients);
             invoiceNotifications.forEach((result) => {
               if (result.status === 'rejected') {
                 console.error('[AP invoice notification] Delivery failed:', result.reason?.message || result.reason);

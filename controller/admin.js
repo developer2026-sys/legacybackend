@@ -621,7 +621,7 @@ module.exports = (models) => {
         memorialLocation: r.memorialLocation,
         advisorName: advisor?.contactName || advisor?.username,
         amount: inv.amount ?? r.invoiceAmount,
-        status:"due",
+        status: inv.paymentStatus,
         createdAt: inv.createdAt,
         paidAt: new Date(`${inv.paidDate}T${inv.paidTime}Z`),
         paymentMethod: 'Manual confirmation',

@@ -530,6 +530,7 @@ const sendApInvoiceEmail = async ({
         .status-pill { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; text-transform: capitalize; background-color: #fef3c7; color: #92400e; }
         .status-pill.paid { background-color: #dcfce7; color: #166534; }
         .total-card { background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: white; padding: 22px; border-radius: 4px; text-align: center; margin-top: 10px; }
+.total-card.pending { background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); color: #78350f; }
         .total-label { font-size: 13px; opacity: 0.9; margin-bottom: 6px; }
         .total-value { font-size: 32px; font-weight: 700; }
         .notes-card { background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 12px 15px; border-radius: 4px; font-size: 13px; color: #78350f; }
@@ -585,7 +586,7 @@ const sendApInvoiceEmail = async ({
           </div>
           ` : ''}
 
-          <div class="total-card">
+         <div class="total-card ${statusLabel === 'paid' ? '' : 'pending'}">
                        <div class="total-label">${statusLabel === 'paid' ? 'Amount Paid' : 'Amount Due'}</div>
             <div class="total-value">${invoiceAmount}</div>
           </div>

@@ -177,15 +177,18 @@ const buildInvoicePdf = async ({
   }
 
   // ---------- Total card ----------
-  ensure(110);
-  const grad = doc.linearGradient(L, y, L + W, y + 80);
-  grad.stop(0, '#22c55e').stop(1, '#16a34a');
-  doc.roundedRect(L, y, W, 80, 4).fill(grad);
-  doc.fillColor('#ffffff').font('Helvetica').fontSize(10)
-    .text(totalLabel, L, y + 16, { width: W, align: 'center' });
-  doc.font('Helvetica-Bold').fontSize(28)
-    .text(totalValue, L, y + 34, { width: W, align: 'center' });
-  y += 80 + 24;
+   // ---------- Total card ----------
+   ensure(110);
+   const grad = doc.linearGradient(L, y, L + W, y + 80);
+   if (paid) grad.stop(0, '#22c55e').stop(1, '#16a34a');
+   else grad.stop(0, '#fbbf24').stop(1, '#f59e0b');
+   doc.roundedRect(L, y, W, 80, 4).fill(grad);
+   const totalTextColor = paid ? '#ffffff' : '#78350f';
+   doc.fillColor(totalTextColor).font('Helvetica').fontSize(10)
+     .text(totalLabel, L, y + 16, { width: W, align: 'center' });
+   doc.font('Helvetica-Bold').fontSize(28)
+     .text(totalValue, L, y + 34, { width: W, align: 'center' });
+   y += 80 + 24;
 
   // ---------- Footer ----------
   ensure(50);

@@ -3,6 +3,8 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
+const DEFAULT_PRICING_PACKAGES = require('../constants/defaultPricingPackages');
+
 const {
   Partner,
   PartnerTeamMember,
@@ -14,6 +16,39 @@ const {
 const JWT_SECRET = process.env.JWT_SECRET;
 const { syncRegisteredUser , syncTeamMember} = require('../airtable');
 const { seedDefaultsForNewAccount } = require('../services/seedNewAccountDefaults');
+
+
+
+async function seedBronzeAndGranite(clientAccountId, locations, effectiveDate) {
+  const packages = await PricingPackage.findAll({
+    where: { key: { [Op.in]: DEFAULT_PRICING_PACKAGES.map((p) => p.key) } },
+  });
+  const byKey = new Map(packages.map((p) => [p.key, p]));
+
+  const rows = [];
+  for (const def of DEFAULT_PRICING_PACKAGES) {
+    const pkg = byKey.get(def.key);
+    if (!pkg) {
+      console.error(`[seedDefaults] Missing package key: ${def.key}`);
+      continue;
+    }
+    for (const location of locations) {
+      rows.push({
+        clientAccountId,
+        locationId: location.id,
+        packageId: pkg.id,
+        restorationPrice: def.price,
+        revenueShare: 0,
+        effectiveDate,
+        service: def.service,
+        item: def.item,
+      });
+    }
+  }
+
+  if (rows.length) await PricingConfiguration.bulkCreate(rows);
+}
+
 
 
 const makeSlug = (value) => String(value || 'client-account')
@@ -46,14 +81,22 @@ const register = async (req, res) => {
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
+    // const clientAccount = await ClientAccount.create({
+    //   name: `${organization || fullName || email} Account`,
+    //   slug: await uniqueAccountSlug(organization || fullName || email),
+    //   accountType: 'client',
+    //   status: 'active',
+    // });
     const clientAccount = await ClientAccount.create({
       name: `${organization || fullName || email} Account`,
       slug: await uniqueAccountSlug(organization || fullName || email),
       accountType: 'client',
       status: 'active',
+      clientAdminPriceVisibility: 'restoration',
+      familyAdvisorPriceVisibility: 'restoration',
     });
     await seedDefaultsForNewAccount(clientAccount.id);
-
+   
     const partner = await Partner.create({
       username: email,
       email,

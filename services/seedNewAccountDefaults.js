@@ -1,7 +1,9 @@
 'use strict';
 
+const { Op } = require('sequelize');
 const { Location, PricingPackage, PricingConfiguration } = require('../models');
 const { DEFAULT_LOCATIONS } = require('../constants/defaultLocations');
+const DEFAULT_PRICING_PACKAGES = require('../constants/defaultPricingPackages');
 const {
   TEST_PACKAGE_NAME,
   TEST_PACKAGE_RESTORATION_PRICE,
@@ -30,8 +32,41 @@ async function findOrCreateTestPackage() {
   return pricingPackage;
 }
 
+async function seedBronzeAndGranite(clientAccountId, locations, effectiveDate) {
+  const packages = await PricingPackage.findAll({
+    where: { key: { [Op.in]: DEFAULT_PRICING_PACKAGES.map((p) => p.key) } },
+  });
+  const byKey = new Map(packages.map((p) => [p.key, p]));
+
+  const rows = [];
+  for (const def of DEFAULT_PRICING_PACKAGES) {
+    let pkg = byKey.get(def.key);
+    if (!pkg) {
+      pkg = await PricingPackage.create({
+        key: def.key,
+        name: `${def.service} - ${def.item}`,
+      });
+      byKey.set(def.key, pkg);
+    }
+    for (const location of locations) {
+      rows.push({
+        clientAccountId,
+        locationId: location.id,
+        packageId: pkg.id,
+        restorationPrice: def.price,
+        revenueShare: 0,
+        effectiveDate,
+        service: def.service,
+        item: def.item,
+      });
+    }
+  }
+
+  if (rows.length) await PricingConfiguration.bulkCreate(rows);
+}
+
 // Creates the default cemetery locations for a brand-new client account,
-// then prices "Test Package 1" at every one of those locations.
+// then prices Test Package 1 plus the Bronze and Granite packages at every location.
 async function seedDefaultsForNewAccount(clientAccountId) {
   await Location.bulkCreate(
     DEFAULT_LOCATIONS.map((loc) => ({
@@ -45,8 +80,6 @@ async function seedDefaultsForNewAccount(clientAccountId) {
     }))
   );
 
-  // Re-fetch rather than trust bulkCreate's returned instances, since
-  // MySQL bulk inserts don't reliably surface generated ids per row.
   const locations = await Location.findAll({
     where: { clientAccountId, status: 'active' },
   });
@@ -64,6 +97,8 @@ async function seedDefaultsForNewAccount(clientAccountId) {
       effectiveDate,
     }))
   );
+
+  await seedBronzeAndGranite(clientAccountId, locations, effectiveDate);
 }
 
 module.exports = { seedDefaultsForNewAccount };

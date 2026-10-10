@@ -397,6 +397,36 @@ const removeIncomingFiles = (req) => {
     if (file?.path) fs.unlink(file.path, () => {});
   });
 };
+
+const parseRemovedIds = (body) => {
+  try {
+    const parsed = JSON.parse(body?.removedFileIds || '[]');
+    if (!Array.isArray(parsed)) return [];
+    return [...new Set(parsed.map(Number).filter(Number.isInteger))];
+  } catch {
+    return [];
+  }
+};
+
+// Only photos that belong to this request + client and were uploaded by the advisor
+const findRemovablePhotos = (requestId, clientAccountId, ids) => (
+  ids.length
+    ? RequestPhoto.findAll({
+        where: {
+          id: { [Op.in]: ids },
+          requestId,
+          clientAccountId,
+          attachmentType: 'request_photo',
+        },
+      })
+    : Promise.resolve([])
+);
+
+const deleteRemovedPhotos = async (photos) => {
+  if (!photos.length) return;
+  await RequestPhoto.destroy({ where: { id: { [Op.in]: photos.map((p) => p.id) } } });
+};
+
 const persistPhotos = async (req, requestId) => {
   const files = req.files || [];
   const saved = [];
@@ -463,6 +493,7 @@ const saveDraft = async (req, res) => {
     };
 
     let draft;
+    let photosToRemove = [];
     if (req.params.id) {
       draft = await MemorialRequest.findOne({
         where: {
@@ -477,7 +508,10 @@ const saveDraft = async (req, res) => {
         removeIncomingFiles(req);
         return res.status(404).json({ message: 'Request not found or not editable.' });
       }
-      const existingPhotoCount = await RequestPhoto.count({ where: { requestId: draft.id, clientAccountId: req.clientAccountId } });
+      photosToRemove = await findRemovablePhotos(draft.id, req.clientAccountId, parseRemovedIds(req.body));
+      const existingPhotoCount =
+        (await RequestPhoto.count({ where: { requestId: draft.id, clientAccountId: req.clientAccountId } }))
+        - photosToRemove.length;
       if (existingPhotoCount + (req.files?.length || 0) > 10) {
         removeIncomingFiles(req);
         return res.status(400).json({ message: 'A request can have up to 10 photos.' });
@@ -501,6 +535,7 @@ const saveDraft = async (req, res) => {
     } else {
       draft = await MemorialRequest.create(values);
     }
+    await deleteRemovedPhotos(photosToRemove);
     await persistPhotos(req, draft.id);
     const savedDraft = await MemorialRequest.findByPk(draft.id, {
       include: [
@@ -548,9 +583,12 @@ const createRequest = async (req, res) => {
       }
     }
 
-    const existingPhotoCount = existingDraft
-      ? await RequestPhoto.count({ where: { requestId: existingDraft.id, clientAccountId: req.clientAccountId } })
-      : 0;
+    const photosToRemove = existingDraft
+    ? await findRemovablePhotos(existingDraft.id, req.clientAccountId, parseRemovedIds(req.body))
+    : [];
+  const existingPhotoCount = (existingDraft
+    ? await RequestPhoto.count({ where: { requestId: existingDraft.id, clientAccountId: req.clientAccountId } })
+    : 0) - photosToRemove.length;
     const missing = validateSubmission({
       fields,
       locationId: rawLocationId,
@@ -630,6 +668,7 @@ const createRequest = async (req, res) => {
     } else {
       memorialRequest = await MemorialRequest.create(submissionValues);
     }
+    await deleteRemovedPhotos(photosToRemove);
     await persistPhotos(req, memorialRequest.id);
     await RequestStatusHistory.create({
       requestId: memorialRequest.id,

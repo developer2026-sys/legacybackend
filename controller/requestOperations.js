@@ -3,6 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
+const { uploadAndCleanup } = require('../utils/cloudinary');
 const { Op } = require('sequelize');
 const {
   MemorialRequest,
@@ -204,8 +205,29 @@ module.exports = (models = {}) => {
       }
     }
 
-    const savedFiles = [];
-    const result = await Request.sequelize.transaction(async (transaction) => {
+        // Upload to Cloudinary first, outside the DB transaction
+        const savedFiles = [];
+        try {
+          if (incomingBefore) {
+            savedFiles.push({
+              file: incomingBefore,
+              type: 'before_photo',
+              upload: await uploadAndCleanup(incomingBefore, `requests/${request.id}/completion`),
+            });
+          }
+          if (incomingAfter) {
+            savedFiles.push({
+              file: incomingAfter,
+              type: 'after_photo',
+              upload: await uploadAndCleanup(incomingAfter, `requests/${request.id}/completion`),
+            });
+          }
+        } catch (e) {
+          console.error('[updateOperations] Cloudinary upload failed:', e.message);
+          return res.status(502).json({ message: 'Photo upload failed. Please try again.' });
+        }
+    
+        const result = await Request.sequelize.transaction(async (transaction) => {
       const [order] = await Order.findOrCreate({
         where: { requestId: request.id },
         defaults: {
@@ -283,25 +305,19 @@ module.exports = (models = {}) => {
         ? await appendStatus(request, nextStatus, req, reason, transaction)
         : null;
 
-      if (incomingBefore) {
-        savedFiles.push({ file: incomingBefore, type: 'before_photo' });
-      }
-      if (incomingAfter) {
-        savedFiles.push({ file: incomingAfter, type: 'after_photo' });
-      }
-      for (const { file, type } of savedFiles) {
-        await Photo.create({
-          requestId: request.id,
-          clientAccountId: request.clientAccountId,
-          storagePath: path.relative(path.join(__dirname, '..'), file.path),
-          attachmentType: type,
-          originalName: file.originalname,
-          mimeType: file.mimetype,
-          sizeBytes: file.size,
-          uploadedByUserId: req.admin.id,
-        }, { transaction });
-      }
-      return { history, nextStatus, order, schedule };
+        for (const { file, type, upload } of savedFiles) {
+          await Photo.create({
+            requestId: request.id,
+            clientAccountId: request.clientAccountId,
+            storagePath: upload.url,            // full Cloudinary https URL
+            attachmentType: type,
+            originalName: upload.originalName || file.originalname,
+            mimeType: upload.mimeType || file.mimetype,
+            sizeBytes: file.size,
+            uploadedByUserId: req.admin.id,
+          }, { transaction });
+        }
+        return { history, nextStatus, order, schedule };
     });
 
     const full = await loadRequest(request.id);

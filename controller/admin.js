@@ -6,6 +6,7 @@ const multer = require('multer');
 const path = require('path');
 const crypto = require('crypto');
 const { TeamMember } = require('../models');
+const { uploadAndCleanup } = require('../utils/cloudinary');
 const { seedDefaultsForNewAccount } = require('../services/seedNewAccountDefaults');
 const fs = require('fs');
 const teammember = require('../models/teammember');
@@ -1135,28 +1136,29 @@ const invoiceNotifications = await notificationService.sendNotifications({
         }
   
         // ← this part was missing from your debug version
-        const records = await Promise.all(
-          req.files.map(f => {
-            const relativePath = path.relative(path.join(__dirname, '..'), f.path);
-            console.log('[uploadDocuments] inserting:', relativePath);
-            return RequestPhoto.create({
-              requestId: id,
-              clientAccountId: request.clientAccountId,
-              storagePath: relativePath,
-              attachmentType: 'supporting',
-              originalName: f.originalname,
-              mimeType: f.mimetype,
-              sizeBytes: f.size,
-              uploadedByUserId: req.admin.id,
-            });
-          })
-        );
-  
-        res.json({
-          message: `${records.length} document(s) uploaded successfully.`,
-          files: req.files.map(f => ({ originalName: f.originalname, filename: f.filename })),
-          count: records.length,
-        });
+              // Upload sequentially to Cloudinary, same as persistPhotos on the user side
+              const records = [];
+              for (const f of req.files) {
+                const result = await uploadAndCleanup(f, `requests/${id}/documents`);
+                console.log('[uploadDocuments] uploaded:', result.url);
+                const record = await RequestPhoto.create({
+                  requestId: id,
+                  clientAccountId: request.clientAccountId,
+                  storagePath: result.url,          // full https Cloudinary URL
+                  attachmentType: 'supporting',
+                  originalName: result.originalName || f.originalname,
+                  mimeType: result.mimeType || f.mimetype,
+                  sizeBytes: f.size,
+                  uploadedByUserId: req.admin.id,
+                });
+                records.push(record);
+              }
+        
+              res.json({
+                message: `${records.length} document(s) uploaded successfully.`,
+                files: records.map(r => ({ originalName: r.originalName, filename: r.originalName, url: r.storagePath })),
+                count: records.length,
+              });
   
       } catch (e) {
         console.error('[uploadDocuments] error:', e);

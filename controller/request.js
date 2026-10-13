@@ -55,6 +55,47 @@ const { recordRequestStatusAudit } = require('../utils/requestAudit');
 const notificationService = createNotificationService();
 const notificationRecipients = createNotificationRecipients({ Partner, ClientAccount, Op });
 
+const canCreatorEditRequest = (request, userId) => {
+  if (!request) return false;
+  if (!ADVISOR_EDITABLE_STATUSES.includes(request.status)) return false;
+  if (String(request.partnerId) !== String(userId)) return false;
+  return request.submittedByUserId == null
+    || String(request.submittedByUserId) === String(userId);
+};
+
+// TEMP DEBUG: remove once the edit issue is fixed
+const debugEditCheck = async (label, req) => {
+  try {
+    const row = await MemorialRequest.findByPk(req.params.id, {
+      attributes: ['id', 'status', 'partnerId', 'submittedByUserId', 'clientAccountId'],
+    });
+    console.log(`[${label}] DEBUG`, JSON.stringify({
+      paramId: req.params.id,
+      logged_in: {
+        partnerId: req.partner?.id,
+        userRole: req.userRole,
+        accountRole: req.accountRole,
+        partnerAccountRole: req.partner?.accountRole,
+        clientAccountId: req.clientAccountId,
+      },
+      row: row ? row.toJSON() : null,
+      editableStatuses: ADVISOR_EDITABLE_STATUSES,
+      checks: row ? {
+        rowFound: true,
+        statusEditable: ADVISOR_EDITABLE_STATUSES.includes(row.status),
+        partnerIdMatches: String(row.partnerId) === String(req.partner?.id),
+        submittedByMatches: row.submittedByUserId == null
+          || String(row.submittedByUserId) === String(req.partner?.id),
+        clientAccountMatches: String(row.clientAccountId) === String(req.clientAccountId),
+      } : { rowFound: false },
+    }, null, 2));
+  } catch (e) {
+    console.log(`[${label}] DEBUG failed:`, e.message);
+  }
+};
+
+
+
 const getRequestScope = async (req) => {
   const familyAdvisor = req.userRole === 'family_advisor'
     || req.accountRole === 'family_advisor'
@@ -495,16 +536,17 @@ const saveDraft = async (req, res) => {
     let draft;
     let photosToRemove = [];
     if (req.params.id) {
+      await debugEditCheck('saveDraft', req);
       draft = await MemorialRequest.findOne({
         where: {
           id: req.params.id,
           partnerId: req.partner.id,
-       submittedByUserId: req.partner.id,
           clientAccountId: req.clientAccountId,
           status: { [Op.in]: ADVISOR_EDITABLE_STATUSES },
         },
       });
-      if (!canAdvisorEditRequest(draft, req.partner.id)) {
+      if (!canCreatorEditRequest(draft, req.partner.id)) {
+        console.log('[saveDraft] BLOCKED: draft', draft ? 'found but canCreatorEditRequest=false' : 'NOT found by findOne');
         removeIncomingFiles(req);
         return res.status(404).json({ message: 'Request not found or not editable.' });
       }
@@ -569,6 +611,7 @@ const createRequest = async (req, res) => {
     });
     let existingDraft = null;
     if (req.params.id) {
+      await debugEditCheck('createRequest', req);
       existingDraft = await MemorialRequest.findOne({
         where: {
           id: req.params.id,
@@ -577,7 +620,8 @@ const createRequest = async (req, res) => {
           status: { [Op.in]: ADVISOR_EDITABLE_STATUSES },
         },
       });
-      if (!canAdvisorEditRequest(existingDraft, req.partner.id)) {
+      if (!canCreatorEditRequest(existingDraft, req.partner.id)) {
+        console.log('[createRequest] BLOCKED: existingDraft', existingDraft ? 'found but canCreatorEditRequest=false' : 'NOT found by findOne');
         removeIncomingFiles(req);
         return res.status(404).json({ message: 'Request not found or not editable.' });
       }
